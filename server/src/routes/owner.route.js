@@ -54,17 +54,22 @@ router.get('/dashboard', async (req, res) => {
             $lte: currentMonthEnd,
           },
           status: 'approved',
-        });
+        })
+          .populate('userId', 'hourlyWage')
+          .lean();
 
-        // 승인된 근무시간 합계
-        const totalApprovedHours = approvedSchedules.reduce(
-          (sum, s) => sum + (s.totalHours || 0),
-          0
-        );
+        // 승인된 근무시간 합계 및 급여 계산 (각 직원의 시급 사용)
+        let totalApprovedHours = 0;
+        let totalApprovedPay = 0;
 
-        // 기본 시급으로 급여 계산 (실제로는 User 모델의 시급 사용해야 함)
-        const hourlyWage = 10030; // TODO: User 모델에서 가져올 예정
-        const totalApprovedPay = Math.round(totalApprovedHours * hourlyWage);
+        for (const schedule of approvedSchedules) {
+          const hours = schedule.totalHours || 0;
+          totalApprovedHours += hours;
+          
+          // 각 직원의 시급 사용 (없으면 기본값 10030)
+          const hourlyWage = schedule.userId?.hourlyWage || 10030;
+          totalApprovedPay += Math.round(hours * hourlyWage);
+        }
 
         // 승인 대기 중인 근무일정 수
         const pendingRequests = await WorkSchedule.countDocuments({
@@ -498,7 +503,10 @@ router.put('/employees/:id', async (req, res) => {
     const { hourlyWage, workSchedule, taxType } = req.body;
 
     // 직원 조회
-    const employee = await User.findById(id).populate('storeId', 'ownerId');
+    const employee = await User.findById(id).populate({
+      path: 'storeId',
+      select: 'ownerId',
+    });
 
     if (!employee) {
       return res.status(404).json({
@@ -520,13 +528,38 @@ router.put('/employees/:id', async (req, res) => {
     }
 
     // 수정 가능한 필드 업데이트
-    // TODO: User 모델에 hourlyWage, workSchedule, taxType 필드 추가 필요
-    // 현재는 응답만 반환
+    const updateData = {};
+    
+    if (hourlyWage !== undefined) {
+      updateData.hourlyWage = hourlyWage;
+    }
+    
+    if (workSchedule !== undefined) {
+      updateData.workSchedule = workSchedule;
+    }
+    
+    if (taxType !== undefined) {
+      // taxType 검증
+      const validTaxTypes = ['none', 'under-15-hours', 'business-income', 'labor-income'];
+      if (validTaxTypes.includes(taxType)) {
+        updateData.taxType = taxType;
+      } else {
+        return res.status(400).json({
+          message: '올바른 세금 타입이 아닙니다.',
+        });
+      }
+    }
+
+    // User 정보 업데이트
+    const updatedEmployee = await User.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true }
+    ).select('-password');
 
     res.json({
       message: '직원 정보가 수정되었습니다.',
-      employee,
-      note: 'User 모델 확장 후 실제 수정 기능 구현 예정',
+      employee: updatedEmployee,
     });
   } catch (error) {
     console.error('직원 정보 수정 오류:', error);

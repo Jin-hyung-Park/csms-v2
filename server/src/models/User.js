@@ -45,6 +45,67 @@ const UserSchema = new mongoose.Schema(
       default: true, // 기본값: 활성
       index: true,
     },
+    // 시급 (근로자만 사용)
+    hourlyWage: {
+      type: Number,
+      default: 10030, // 최저시급 기본값
+      min: [0, '시급은 0 이상이어야 합니다'],
+    },
+    // 세금 신고 유형
+    taxType: {
+      type: String,
+      enum: ['none', 'under-15-hours', 'business-income', 'labor-income'],
+      default: 'none',
+      // 'none': 미신고 (세금 면제)
+      // 'under-15-hours': 주 15시간 미만
+      // 'business-income': 사업자소득 (3.3%)
+      // 'labor-income': 근로소득
+    },
+    // 근무 스케줄 (요일별 근무 시간, 근로자만 사용)
+    workSchedule: {
+      monday: {
+        enabled: { type: Boolean, default: false },
+        startTime: { type: String, default: '09:00' },
+        endTime: { type: String, default: '18:00' },
+      },
+      tuesday: {
+        enabled: { type: Boolean, default: false },
+        startTime: { type: String, default: '09:00' },
+        endTime: { type: String, default: '18:00' },
+      },
+      wednesday: {
+        enabled: { type: Boolean, default: false },
+        startTime: { type: String, default: '09:00' },
+        endTime: { type: String, default: '18:00' },
+      },
+      thursday: {
+        enabled: { type: Boolean, default: false },
+        startTime: { type: String, default: '09:00' },
+        endTime: { type: String, default: '18:00' },
+      },
+      friday: {
+        enabled: { type: Boolean, default: false },
+        startTime: { type: String, default: '09:00' },
+        endTime: { type: String, default: '18:00' },
+      },
+      saturday: {
+        enabled: { type: Boolean, default: false },
+        startTime: { type: String, default: '09:00' },
+        endTime: { type: String, default: '18:00' },
+      },
+      sunday: {
+        enabled: { type: Boolean, default: false },
+        startTime: { type: String, default: '09:00' },
+        endTime: { type: String, default: '18:00' },
+      },
+    },
+    // 직책
+    position: {
+      type: String,
+      default: '파트타이머',
+      trim: true,
+      maxlength: 50,
+    },
   },
   { timestamps: true }
 );

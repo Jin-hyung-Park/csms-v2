@@ -9,6 +9,7 @@ const authRouter = require('./routes/auth.route');
 const employeeRouter = require('./routes/employee.route');
 const ownerRouter = require('./routes/owner.route');
 const workScheduleRouter = require('./routes/workSchedule.route');
+const monthlySalaryRouter = require('./routes/monthlySalary.route');
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/employee', employeeRouter);
 app.use('/api/owner', ownerRouter);
 app.use('/api/work-schedule', workScheduleRouter);
+app.use('/api/monthly-salary', monthlySalaryRouter);
 
 app.use((req, res) => {
   res.status(404).json({ message: '요청하신 리소스를 찾을 수 없습니다.' });

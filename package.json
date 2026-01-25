@@ -1,0 +1,16 @@
+{
+  "name": "csms-v2",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Next-gen CSMS ver2 monorepo",
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix server\" \"npm start --prefix client\"",
+    "dev:client": "npm start --prefix client",
+    "dev:server": "npm run dev --prefix server",
+    "build": "npm run build --prefix client"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0"
+  }
+}

@@ -1,0 +1,44 @@
+# AWS 최적화된 멀티 스테이지 빌드
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# 의존성 설치
+COPY package*.json ./
+COPY client/package*.json ./client/
+RUN npm ci --only=production
+RUN cd client && npm ci --only=production
+
+# 소스 복사 및 빌드
+COPY . .
+RUN cd client && npm run build
+
+# 프로덕션 스테이지
+FROM node:18-alpine AS production
+
+# 보안을 위한 non-root 사용자
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S appuser -u 1001
+
+WORKDIR /app
+
+# 프로덕션 의존성만 설치
+COPY package*.json ./
+RUN npm ci --only=production && npm cache clean --force
+
+# 빌드된 앱 복사
+COPY --from=builder --chown=appuser:nodejs /app/server ./server
+COPY --from=builder --chown=appuser:nodejs /app/client/build ./client/build
+
+# 로그 디렉토리 생성
+RUN mkdir -p logs && chown appuser:nodejs logs
+
+USER appuser
+
+EXPOSE 5000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:5000/api/health || exit 1
+
+CMD ["npm", "start"]

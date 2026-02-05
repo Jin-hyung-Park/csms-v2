@@ -1,0 +1,162 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* 모바일 최적화 */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* 스크롤바 스타일링 */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* 전역 스타일 */
+.MuiDataGrid-root .MuiDataGrid-cell:focus {
+  outline: none;
+}
+
+.MuiDataGrid-root .MuiDataGrid-row:focus {
+  outline: none;
+}
+
+/* 접근성 개선 */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* 고대비 모드 지원 */
+@media (prefers-contrast: high) {
+  .MuiButton-root {
+    border: 2px solid currentColor;
+  }
+}
+
+/* 모바일 최적화 */
+@media (max-width: 600px) {
+  /* 기본 폰트 크기 증가 */
+  body {
+    font-size: 14px;
+  }
+  
+  /* 터치 친화적인 버튼 크기 */
+  .MuiButton-root {
+    min-height: 44px;
+    padding: 10px 16px;
+  }
+  
+  .MuiIconButton-root {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  
+  /* 입력 필드 크기 조정 */
+  .MuiTextField-root input,
+  .MuiSelect-select {
+    font-size: 16px; /* iOS 자동 줌 방지 */
+  }
+  
+  /* 테이블 가로 스크롤 */
+  .MuiTableContainer-root {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* 다이얼로그 풀스크린 */
+  .MuiDialog-paper {
+    margin: 16px;
+    max-height: calc(100% - 32px);
+  }
+  
+  /* 카드 여백 줄이기 */
+  .MuiCard-root {
+    margin-bottom: 12px;
+  }
+  
+  .MuiCardContent-root {
+    padding: 12px;
+  }
+  
+  .MuiCardContent-root:last-child {
+    padding-bottom: 12px;
+  }
+  
+  /* Chip 크기 조정 */
+  .MuiChip-root {
+    height: 28px;
+    font-size: 0.75rem;
+  }
+  
+  /* Typography 반응형 크기 */
+  .MuiTypography-h4 {
+    font-size: 1.75rem;
+  }
+  
+  .MuiTypography-h5 {
+    font-size: 1.5rem;
+  }
+  
+  .MuiTypography-h6 {
+    font-size: 1.25rem;
+  }
+}
+
+/* 태블릿 최적화 */
+@media (min-width: 600px) and (max-width: 960px) {
+  .MuiContainer-root {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+}
+
+/* 가로 모드 모바일 */
+@media (max-width: 960px) and (orientation: landscape) {
+  .MuiDrawer-root .MuiDrawer-paper {
+    width: 200px;
+  }
+}
+
+/* 터치 디바이스 최적화 */
+@media (hover: none) and (pointer: coarse) {
+  /* 호버 효과 제거 */
+  .MuiButton-root:hover {
+    background-color: inherit;
+  }
+  
+  /* 터치 영역 확대 */
+  .MuiListItemButton-root {
+    min-height: 48px;
+  }
+  
+  /* 드래그 방지 */
+  img {
+    -webkit-user-drag: none;
+    user-select: none;
+  }
+} 

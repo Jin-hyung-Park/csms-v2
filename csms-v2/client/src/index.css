@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  /* Safe area for notched devices (iOS, Android) */
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: 'Pretendard Variable', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans',
+    'Droid Sans', 'Helvetica Neue', sans-serif;
+  background-color: #f4f6fb;
+  color: #0f172a;
+  -webkit-tap-highlight-color: rgba(31, 149, 255, 0.15);
+  -webkit-touch-callout: none;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Touch-friendly: minimum tap target 44px, remove 300ms delay */
+@layer utilities {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+    touch-action: manipulation;
+  }
+  .input-touch {
+    min-height: 48px;
+    font-size: 16px; /* Prevents iOS zoom on focus */
+    touch-action: manipulation;
+  }
+}
+
+/* Safe area padding for bottom nav */
+.safe-area-bottom {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}

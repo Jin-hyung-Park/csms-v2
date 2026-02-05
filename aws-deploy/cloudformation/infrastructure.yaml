@@ -1,0 +1,173 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: '편의점 관리 시스템 - 저비용 AWS 인프라'
+
+Parameters:
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: EC2 인스턴스 접속용 키페어
+  
+  DomainName:
+    Type: String
+    Default: convenience-store.example.com
+    Description: 도메인 이름
+
+Resources:
+  # VPC
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: convenience-store-vpc
+
+  # 인터넷 게이트웨이
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: convenience-store-igw
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+  # 퍼블릭 서브넷
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: convenience-store-public-subnet
+
+  # 라우트 테이블
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: convenience-store-public-routes
+
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet
+
+  # 보안 그룹
+  WebSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: convenience-store-web-sg
+      GroupDescription: 웹 서버 보안 그룹
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: convenience-store-web-sg
+
+  # EC2 인스턴스
+  WebServer:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0c6e5afdd23291f73  # Ubuntu 22.04 LTS (서울 리전)
+      InstanceType: t2.micro
+      KeyName: !Ref KeyPairName
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds:
+        - !Ref WebSecurityGroup
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          apt update -y
+          apt install -y docker.io docker-compose nginx certbot python3-certbot-nginx
+          systemctl start docker
+          systemctl enable docker
+          usermod -aG docker ubuntu
+          
+          # Node.js 18 설치
+          curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+          apt-get install -y nodejs
+          npm install -g pm2
+          
+          # 애플리케이션 디렉토리 생성
+          mkdir -p /var/www/convenience-store
+          chown ubuntu:ubuntu /var/www/convenience-store
+      Tags:
+        - Key: Name
+          Value: convenience-store-web
+
+  # S3 버킷 (정적 파일용)
+  StaticFilesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${AWS::StackName}-static-files-${AWS::AccountId}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+
+  # S3 버킷 정책
+  StaticFilesBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref StaticFilesBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub '${StaticFilesBucket}/*'
+
+Outputs:
+  WebServerPublicIP:
+    Description: 웹 서버 공인 IP
+    Value: !GetAtt WebServer.PublicIp
+    Export:
+      Name: !Sub '${AWS::StackName}-WebServerIP'
+
+  StaticFilesBucketName:
+    Description: S3 버킷 이름
+    Value: !Ref StaticFilesBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-S3Bucket'
+
+  WebsiteURL:
+    Description: 웹사이트 URL
+    Value: !Sub 'http://${WebServer.PublicIp}'
+    Export:
+      Name: !Sub '${AWS::StackName}-WebsiteURL'

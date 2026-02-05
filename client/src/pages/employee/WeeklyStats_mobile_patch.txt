@@ -1,0 +1,10 @@
+# WeeklyStats.js 모바일 최적화 패치
+
+## Import 추가
+import { useIsMobile } from '../../hooks/useMediaQuery';
+
+## 컴포넌트 시작 부분에 추가
+const isMobile = useIsMobile();
+
+## 테이블 부분을 모바일에서 카드로 변경 (라인 ~200-300)
+모바일에서는 테이블 대신 카드 형태로 표시하도록 수정

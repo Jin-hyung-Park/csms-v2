@@ -125,3 +125,6 @@ ssl/
 
 # AWS 배포 정보 (로컬 전용, GitHub에 올리지 않음)
 deployment-info.txt
+
+# AWS CLI 등 대용량 바이너리 (GitHub 푸시 제한 회피)
+aws/dist/

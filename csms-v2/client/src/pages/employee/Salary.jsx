@@ -114,7 +114,7 @@ export default function EmployeeSalaryPage() {
             }
             className="touch-target flex-1 min-w-0 rounded-2xl border border-slate-200 px-4 py-3 text-base font-semibold text-brand-600 active:bg-slate-50"
           >
-            월별 상세 보기
+            급여 확인하기
           </button>
           <button
             type="button"

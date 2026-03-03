@@ -117,14 +117,14 @@ export default function EmployeeSalaryDetailPage() {
                   disabled={confirmMutation.isPending}
                   className="touch-target rounded-2xl bg-brand-500 px-4 py-2 text-sm font-semibold text-white active:bg-brand-600 disabled:opacity-50"
                 >
-                  {confirmMutation.isPending ? '처리 중...' : '이상 없음 · 확인'}
+                  {confirmMutation.isPending ? '처리 중...' : '급여 확인 완료'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setFeedbackOpen(true)}
                   className="touch-target rounded-2xl border border-amber-400 bg-white px-4 py-2 text-sm font-semibold text-amber-700 active:bg-amber-50"
                 >
-                  이상 시 피드백 보내기
+                  수정 요청
                 </button>
               </>
             )}
@@ -163,14 +163,73 @@ export default function EmployeeSalaryDetailPage() {
         <div className="grid gap-3 text-sm text-slate-600">
           <DetailRow label="총 근무시간" value={`${data.monthlyTotal.totalHours}시간`} />
           <DetailRow label="기본급" value={currency.format(data.monthlyTotal.totalBasePay)} />
-          <DetailRow label="주휴수당" value={currency.format(data.monthlyTotal.totalHolidayPay)} />
+          {data.monthlySalaryId && (
+            <DetailRow label="주휴수당" value={currency.format(data.monthlyTotal.totalHolidayPay)} />
+          )}
           <DetailRow label="총 지급액" value={currency.format(data.monthlyTotal.totalGrossPay)} />
           {data.monthlyTotal.welfarePoints != null && data.monthlyTotal.welfarePoints > 0 && (
             <DetailRow label="복지포인트" value={currency.format(data.monthlyTotal.welfarePoints)} />
           )}
-          <DetailRow label="세금" value={`-${currency.format(data.monthlyTotal.taxInfo.taxAmount)}`} />
-          <DetailRow label="실수령액" value={currency.format(data.monthlyTotal.taxInfo.netPay)} highlight />
+          {data.monthlySalaryId && data.monthlyTotal.taxInfo && (
+            <DetailRow label="실수령액" value={currency.format(data.monthlyTotal.taxInfo?.netPay ?? 0)} highlight />
+          )}
         </div>
+        {/* 세금 정보 - 산정 후에만 노출, 점주 화면과 유사하게 */}
+        {data.monthlySalaryId && data.monthlyTotal.taxInfo && (data.monthlyTotal.taxInfo.taxAmount > 0 || data.monthlyTotal.taxInfo.totalTax > 0 || data.taxType === 'four-insurance') && (
+          <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+            <h3 className="mb-3 text-base font-semibold text-slate-900">
+              {data.taxType === 'four-insurance' || data.monthlyTotal.taxInfo.nationalPension != null || data.monthlyTotal.taxInfo.healthInsurance != null ? '4대 보험·세금 정보' : '세금 정보'}
+            </h3>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {(data.taxType === 'four-insurance' || data.monthlyTotal.taxInfo.nationalPension != null || data.monthlyTotal.taxInfo.healthInsurance != null || data.monthlyTotal.taxInfo.longTermCare != null || data.monthlyTotal.taxInfo.employmentInsurance != null) && (
+                <>
+                  <div>
+                    <p className="text-xs text-slate-500">국민연금</p>
+                    <p className="text-base font-semibold text-slate-900">
+                      {currency.format(data.monthlyTotal.taxInfo.nationalPension ?? 0)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">건강보험</p>
+                    <p className="text-base font-semibold text-slate-900">
+                      {currency.format(data.monthlyTotal.taxInfo.healthInsurance ?? 0)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">장기요양보험</p>
+                    <p className="text-base font-semibold text-slate-900">
+                      {currency.format(data.monthlyTotal.taxInfo.longTermCare ?? 0)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">고용보험</p>
+                    <p className="text-base font-semibold text-slate-900">
+                      {currency.format(data.monthlyTotal.taxInfo.employmentInsurance ?? 0)}
+                    </p>
+                  </div>
+                </>
+              )}
+              <div>
+                <p className="text-xs text-slate-500">소득세</p>
+                <p className="text-base font-semibold text-slate-900">
+                  {currency.format(data.monthlyTotal.taxInfo.incomeTax ?? 0)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">지방세</p>
+                <p className="text-base font-semibold text-slate-900">
+                  {currency.format(data.monthlyTotal.taxInfo.localTax ?? 0)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">총 공제액</p>
+                <p className="text-base font-semibold text-red-600">
+                  {currency.format(data.monthlyTotal.taxInfo.totalTax ?? data.monthlyTotal.taxInfo.taxAmount ?? 0)}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         {data.employeeFeedbackMessage && (
           <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
             <p className="text-xs font-semibold text-amber-800">보낸 피드백 (점주에게 전달됨)</p>
@@ -218,7 +277,12 @@ export default function EmployeeSalaryDetailPage() {
       )}
 
       {data.weeklyData.map((week) => (
-        <WeekDetail key={week.weekNumber} week={week} focused={week.weekNumber === selectedWeekNumber} />
+        <WeekDetail
+          key={week.weekNumber}
+          week={week}
+          focused={week.weekNumber === selectedWeekNumber}
+          showHolidayPay={!!data.monthlySalaryId}
+        />
       ))}
     </div>
   );
@@ -235,7 +299,7 @@ function DetailRow({ label, value, highlight }) {
   );
 }
 
-function WeekDetail({ week, focused }) {
+function WeekDetail({ week, focused, showHolidayPay }) {
   return (
     <section
       className={`rounded-3xl border border-white/60 bg-white/90 p-5 shadow-sm ${
@@ -253,7 +317,9 @@ function WeekDetail({ week, focused }) {
         <Info label="근무시간" value={`${week.totalHours}시간`} />
         <Info label="근무일수" value={`${week.workDays}일`} />
         <Info label="기본급" value={currency.format(week.basePay)} />
-        <Info label="주휴수당" value={currency.format(week.holidayPay)} />
+        {showHolidayPay && (
+          <Info label="주휴수당" value={currency.format(week.holidayPay)} />
+        )}
       </div>
 
       <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3">
@@ -261,7 +327,7 @@ function WeekDetail({ week, focused }) {
         <ul className="mt-2 space-y-2 text-sm">
           {week.dailySchedules?.length ? (
             week.dailySchedules.map((day) => (
-              <li key={day.date} className="flex items-center justify-between">
+              <li key={day.id || `${day.date}-${day.startTime}`} className="flex items-center justify-between">
                 <div>
                   <p className="font-semibold text-slate-900">
                     {day.dayOfWeek} {day.startTime}~{day.endTime}
@@ -276,12 +342,14 @@ function WeekDetail({ week, focused }) {
                       ? 'text-emerald-600'
                       : day.status === 'pending'
                         ? 'text-amber-600'
-                        : 'text-red-500'
+                        : day.status === 'rejected'
+                          ? 'text-red-500'
+                          : 'text-slate-500'
                   }`}
                 >
                   {day.status === 'approved' && '승인'}
-                  {day.status === 'pending' && '대기'}
-                  {day.status === 'rejected' && '반려'}
+                  {day.status === 'pending' && '미승인'}
+                  {day.status === 'rejected' && '거절'}
                 </span>
               </li>
             ))

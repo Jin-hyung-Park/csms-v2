@@ -554,18 +554,48 @@ router.get('/salary/:year/:month', async (req, res) => {
 
     if (existingSalary) {
       const taxInfo = existingSalary.taxInfo || {};
-      const weeklyData = (existingSalary.weeklyDetails || []).map((w) => ({
-        weekNumber: w.weekNumber,
-        range: w.startDate && w.endDate ? `${w.startDate} ~ ${w.endDate}` : '',
-        totalHours: w.workHours ?? 0,
-        workDays: w.workDays ?? 0,
-        basePay: w.basePay ?? 0,
-        holidayPay: w.holidayPay ?? 0,
-        weeklyTotal: w.weeklyTotal ?? 0,
-        welfarePoints: Math.floor((w.workHours || 0) / 4) * 1700,
-        holidayPayStatus: w.holidayPayStatus || 'pending',
-        dailySchedules: [],
-      }));
+      const monthStart = getStartOfMonth(yearNum, monthNum);
+      const monthEnd = getEndOfMonth(yearNum, monthNum);
+      const allSchedules = await WorkSchedule.find({
+        userId: user._id,
+        workDate: { $gte: monthStart, $lte: monthEnd },
+      })
+        .populate('storeId', 'name')
+        .sort({ workDate: 1, startTime: 1 })
+        .lean();
+
+      const weeklyData = (existingSalary.weeklyDetails || []).map((w) => {
+        const wStart = w.startDate ? new Date(w.startDate) : null;
+        const wEnd = w.endDate ? new Date(w.endDate) : null;
+        const dayList = !wStart || !wEnd
+          ? []
+          : allSchedules.filter((s) => {
+              const d = new Date(s.workDate);
+              return d >= wStart && d <= wEnd;
+            });
+        return {
+          weekNumber: w.weekNumber,
+          range: w.startDate && w.endDate ? `${w.startDate} ~ ${w.endDate}` : '',
+          totalHours: w.workHours ?? 0,
+          workDays: w.workDays ?? 0,
+          basePay: w.basePay ?? 0,
+          holidayPay: w.holidayPay ?? 0,
+          weeklyTotal: w.weeklyTotal ?? 0,
+          welfarePoints: Math.floor((w.workHours || 0) / 4) * 1700,
+          holidayPayStatus: w.holidayPayStatus || 'pending',
+          dailySchedules: dayList.map((schedule) => ({
+            id: schedule._id.toString(),
+            date: formatLocalDate(schedule.workDate),
+            dayOfWeek: getDayOfWeek(schedule.workDate),
+            storeName: schedule.storeId?.name || '점포 정보 없음',
+            startTime: schedule.startTime,
+            endTime: schedule.endTime,
+            hours: schedule.totalHours || 0,
+            status: schedule.status || 'pending',
+          })),
+        };
+      });
+
       return res.json({
         year: yearNum,
         month: monthNum,
@@ -573,6 +603,7 @@ router.get('/salary/:year/:month', async (req, res) => {
         isConfirmed: existingSalary.status === 'confirmed',
         confirmedAt: existingSalary.confirmedAt || null,
         monthlySalaryId: existingSalary._id.toString(),
+        taxType: existingSalary.taxType || null,
         employeeConfirmed: existingSalary.employeeConfirmed ?? false,
         employeeConfirmedAt: existingSalary.employeeConfirmedAt || null,
         employeeFeedbackMessage: existingSalary.employeeFeedbackMessage || null,
@@ -584,10 +615,15 @@ router.get('/salary/:year/:month', async (req, res) => {
           totalGrossPay: existingSalary.totalGrossPay ?? 0,
           welfarePoints: existingSalary.totalWelfarePoints ?? 0,
           taxInfo: {
+            totalTax: taxInfo.totalTax ?? 0,
             taxAmount: taxInfo.totalTax ?? 0,
             incomeTax: taxInfo.incomeTax ?? 0,
             localTax: taxInfo.localTax ?? 0,
             netPay: taxInfo.netPay ?? existingSalary.totalGrossPay ?? 0,
+            nationalPension: taxInfo.nationalPension,
+            healthInsurance: taxInfo.healthInsurance,
+            longTermCare: taxInfo.longTermCare,
+            employmentInsurance: taxInfo.employmentInsurance,
           },
         },
         weeklyData,
@@ -598,44 +634,43 @@ router.get('/salary/:year/:month', async (req, res) => {
     const monthStart = getStartOfMonth(yearNum, monthNum);
     const monthEnd = getEndOfMonth(yearNum, monthNum);
 
-    // 해당 월의 승인된 근무일정 조회
-    const schedules = await WorkSchedule.find({
+    // 해당 월 전체 근무일정 조회 (승인/미승인/거절 모두 - 일별 목록 및 상태 노출용)
+    const allSchedulesInMonth = await WorkSchedule.find({
       userId: user._id,
-      workDate: {
-        $gte: monthStart,
-        $lte: monthEnd,
-      },
-      status: 'approved', // 승인된 근무만 급여 계산
+      workDate: { $gte: monthStart, $lte: monthEnd },
     })
       .populate('storeId', 'name')
-      .sort({ workDate: 1, startTime: 1 });
-    
-    // 월별 통계 계산
-    const totalHours = schedules.reduce((sum, s) => sum + (s.totalHours || 0), 0);
-    const hourlyWage = user.hourlyWage || 10320; // User 모델에서 시급 가져오기 (2026년 최저시급)
+      .sort({ workDate: 1, startTime: 1 })
+      .lean();
+
+    const approvedSchedules = allSchedulesInMonth.filter((s) => s.status === 'approved');
+    const unapprovedSchedules = allSchedulesInMonth.filter((s) => s.status !== 'approved');
+    const unapprovedWorkDays = unapprovedSchedules.length;
+    const unapprovedWorkHours = unapprovedSchedules.reduce((sum, s) => sum + (s.totalHours || 0), 0);
+
+    // 월별 통계는 승인된 근무만
+    const totalHours = approvedSchedules.reduce((sum, s) => sum + (s.totalHours || 0), 0);
+    const hourlyWage = user.hourlyWage || 10320;
     const totalBasePay = Math.round(totalHours * hourlyWage);
-    const totalHolidayPay = 0; // TODO: 주휴수당 계산
+    const totalHolidayPay = 0;
     const totalGrossPay = totalBasePay + totalHolidayPay;
-    
-    // 세금 계산 (간단한 계산, 추후 정확한 세금 계산 로직 추가 필요)
-    const taxAmount = Math.round(totalGrossPay * 0.033); // 3.3% 사업자소득세
-    const netPay = totalGrossPay - taxAmount;
-    
-    // 주차별 데이터 계산
+
+    // 주차별: 합계는 승인만, 일별 목록은 전체(승인/미승인/거절 상태 포함)
     const weeksInMonth = getWeeksInMonth(yearNum, monthNum);
     const weeklyData = [];
-    
+
     for (let weekNum = 1; weekNum <= weeksInMonth; weekNum++) {
       const { startDate, endDate } = getWeekDateRange(monthStart, weekNum);
-      
-      const weekSchedules = schedules.filter((schedule) => {
+
+      const weekAll = allSchedulesInMonth.filter((schedule) => {
         const scheduleDate = new Date(schedule.workDate);
         return scheduleDate >= startDate && scheduleDate <= endDate;
       });
-      
-      const weekHours = weekSchedules.reduce((sum, s) => sum + (s.totalHours || 0), 0);
+      const weekApproved = weekAll.filter((s) => s.status === 'approved');
+
+      const weekHours = weekApproved.reduce((sum, s) => sum + (s.totalHours || 0), 0);
       const weekBasePay = Math.round(weekHours * hourlyWage);
-      const weekHolidayPay = 0; // TODO: 주휴수당 계산
+      const weekHolidayPay = 0;
       const weekTotal = weekBasePay + weekHolidayPay;
       const weekWelfarePoints = Math.floor(weekHours / 4) * 1700;
 
@@ -643,44 +678,47 @@ router.get('/salary/:year/:month', async (req, res) => {
         weekNumber: weekNum,
         range: formatDateRange(startDate, endDate),
         totalHours: Math.round(weekHours * 100) / 100,
-        workDays: weekSchedules.length,
+        workDays: weekApproved.length,
         basePay: weekBasePay,
         holidayPay: weekHolidayPay,
         weeklyTotal: weekTotal,
         welfarePoints: weekWelfarePoints,
-        holidayPayStatus: 'pending', // TODO: 주휴수당 상태 확인
-        dailySchedules: weekSchedules.map((schedule) => ({
+        holidayPayStatus: 'pending',
+        dailySchedules: weekAll.map((schedule) => ({
+          id: schedule._id.toString(),
           date: formatLocalDate(schedule.workDate),
           dayOfWeek: getDayOfWeek(schedule.workDate),
           storeName: schedule.storeId?.name || '점포 정보 없음',
           startTime: schedule.startTime,
           endTime: schedule.endTime,
           hours: schedule.totalHours || 0,
-          status: schedule.status,
+          status: schedule.status || 'pending',
         })),
       });
     }
-    
+
     const welfarePoints = weeklyData.reduce((sum, w) => sum + (w.welfarePoints || 0), 0);
 
     res.json({
       year: yearNum,
       month: monthNum,
       monthLabel: formatMonthLabel(yearNum, monthNum),
-      isConfirmed: false, // TODO: MonthlySalary 모델에서 확인
-      confirmedAt: null, // TODO: MonthlySalary 모델에서 가져올 예정
+      isConfirmed: false,
+      confirmedAt: null,
+      monthlySalaryId: null,
+      employeeConfirmed: false,
+      employeeConfirmedAt: null,
+      employeeFeedbackMessage: null,
+      employeeFeedbackAt: null,
       monthlyTotal: {
         totalHours: Math.round(totalHours * 100) / 100,
         totalBasePay,
         totalHolidayPay,
         totalGrossPay,
         welfarePoints,
-        taxInfo: {
-          taxAmount,
-          incomeTax: Math.round(taxAmount * 0.9), // 간단한 계산
-          localTax: Math.round(taxAmount * 0.1), // 간단한 계산
-          netPay,
-        },
+        unapprovedWorkDays,
+        unapprovedWorkHours: Math.round(unapprovedWorkHours * 100) / 100,
+        taxInfo: null,
       },
       weeklyData,
     });

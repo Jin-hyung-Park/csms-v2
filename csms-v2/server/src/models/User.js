@@ -126,6 +126,17 @@ const UserSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    // 비밀번호 재설정용 (비밀번호 찾기)
+    resetPasswordToken: {
+      type: String,
+      default: null,
+      select: false,
+    },
+    resetPasswordExpires: {
+      type: Date,
+      default: null,
+      select: false,
+    },
   },
   { timestamps: true }
 );

@@ -5,6 +5,9 @@ import { apiClient } from '../../lib/apiClient';
 export default function OwnerSchedulesPage() {
   const [statusFilter, setStatusFilter] = useState('pending');
   const [storeFilter, setStoreFilter] = useState('');
+  const [userIdFilter, setUserIdFilter] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [rejectingId, setRejectingId] = useState(null);
   const [editingId, setEditingId] = useState(null);
@@ -14,17 +17,32 @@ export default function OwnerSchedulesPage() {
   const [exportingSchedules, setExportingSchedules] = useState(false);
   const queryClient = useQueryClient();
 
-  // 근무일정 목록 조회
+  // 근무일정 목록 조회 (인원·일자 필터 포함)
   const { data, isLoading } = useQuery({
-    queryKey: ['owner-schedules', statusFilter, storeFilter],
+    queryKey: ['owner-schedules', statusFilter, storeFilter, userIdFilter, fromDate, toDate],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (statusFilter) params.append('status', statusFilter);
       if (storeFilter) params.append('storeId', storeFilter);
+      if (userIdFilter) params.append('userId', userIdFilter);
+      if (fromDate) params.append('fromDate', fromDate);
+      if (toDate) params.append('toDate', toDate);
       const { data } = await apiClient.get(`/owner/schedules?${params}`);
       return data;
     },
     staleTime: 10 * 1000,
+  });
+
+  // 인원 필터용 직원 목록 (점포별)
+  const { data: employeesData } = useQuery({
+    queryKey: ['owner-employees-options', storeFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (storeFilter) params.append('storeId', storeFilter);
+      const { data } = await apiClient.get(`/owner/employees?${params}`);
+      return data;
+    },
+    staleTime: 60 * 1000,
   });
 
   // 점포 목록 조회 (필터용)
@@ -203,7 +221,7 @@ export default function OwnerSchedulesPage() {
           </select>
           <select
             value={storeFilter}
-            onChange={(e) => setStoreFilter(e.target.value)}
+            onChange={(e) => { setStoreFilter(e.target.value); setUserIdFilter(''); }}
             className="input-touch rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base font-semibold text-slate-700"
           >
             <option value="">전체 점포</option>
@@ -213,6 +231,33 @@ export default function OwnerSchedulesPage() {
               </option>
             ))}
           </select>
+          <select
+            value={userIdFilter}
+            onChange={(e) => setUserIdFilter(e.target.value)}
+            className="input-touch rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base font-semibold text-slate-700"
+          >
+            <option value="">전체 인원</option>
+            {(employeesData?.items || []).map((emp) => (
+              <option key={emp._id} value={emp._id}>
+                {emp.name}
+              </option>
+            ))}
+          </select>
+          <input
+            type="date"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            className="input-touch rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base font-semibold text-slate-700"
+            title="시작일"
+          />
+          <span className="text-slate-400">~</span>
+          <input
+            type="date"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+            className="input-touch rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base font-semibold text-slate-700"
+            title="종료일"
+          />
           <span className="hidden text-sm text-slate-500 sm:inline">|</span>
           <select
             value={exportYear}

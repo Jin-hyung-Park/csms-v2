@@ -25,67 +25,63 @@ describe('taxCalculator', () => {
       expect(result.netPay).toBe(0);
     });
 
-    it('국민연금 4.5%, 1000원 미만 절사', () => {
-      // 100000 * 0.045 = 4500 → 4000 (1000원 절사)
+    it('국민연금 4.75%, 1000원 미만 절사', () => {
+      // 100000 * 0.0475 = 4750 → 4000 (1000원 절사)
       const result = calculateFourInsurance(100_000);
       expect(result.nationalPension).toBe(4000);
     });
 
-    it('건강보험 3.545%, 10원 미만 절사', () => {
-      // 100000 * 0.03545 = 3545 → 3540 (10원 절사)
+    it('건강보험 3.595%, 10원 미만 절사', () => {
+      // 100000 * 0.03595 = 3595 → 3590 (10원 절사)
       const result = calculateFourInsurance(100_000);
-      expect(result.healthInsurance).toBe(3540);
+      expect(result.healthInsurance).toBe(3590);
     });
 
-    it('장기요양은 건강보험료의 12.95%, 10원 미만 절사', () => {
+    it('장기요양 0.465% (총 급여 기준), 10원 미만 절사', () => {
       const result = calculateFourInsurance(100_000);
-      // healthInsurance = 3540, 3540 * 0.1295 = 458.46 → 450
-      expect(result.longTermCare).toBe(450);
+      // 100000 * 0.00465 = 465 → 460
+      expect(result.longTermCare).toBe(460);
     });
 
     it('고용보험 0.9%, 10원 미만 절사', () => {
-      // 100000 * 0.009 = 900 (부동소수점에 따라 890~900 가능). 10원 단위 절사 적용
       const result = calculateFourInsurance(100_000);
       expect(result.employmentInsurance).toBeGreaterThanOrEqual(890);
       expect(result.employmentInsurance).toBeLessThanOrEqual(900);
       expect(result.employmentInsurance % 10).toBe(0);
     });
 
-    it('소득세 1.53%, 10원 미만 절사', () => {
-      // 100000 * 0.0153 = 1530 → 1530
+    it('소득세 3.3%, 10원 미만 절사', () => {
+      // 100000 * 0.033 = 3300
       const result = calculateFourInsurance(100_000);
-      expect(result.incomeTax).toBe(1530);
+      expect(result.incomeTax).toBe(3300);
     });
 
-    it('지방소득세는 소득세의 10%, 10원 미만 절사', () => {
+    it('4대보험 유형은 지방세 없음', () => {
       const result = calculateFourInsurance(100_000);
-      // incomeTax = 1530, 1530 * 0.1 = 153 → 150
-      expect(result.localTax).toBe(150);
+      expect(result.localTax).toBe(0);
     });
 
     it('월 200만원 급여 시 totalTax 및 netPay 일치', () => {
       const gross = 2_000_000;
       const result = calculateFourInsurance(gross);
-      const expectedNational = Math.floor((gross * 0.045) / 1000) * 1000; // 90000
-      const expectedHealth = Math.floor((gross * 0.03545) / 10) * 10; // 70890
-      const expectedLongTerm = Math.floor((expectedHealth * 0.1295) / 10) * 10;
-      const expectedEmployment = Math.floor((gross * 0.009) / 10) * 10; // 18000
-      const expectedIncome = Math.floor((gross * 0.0153) / 10) * 10; // 30600
-      const expectedLocal = Math.floor((expectedIncome * 0.1) / 10) * 10; // 3060
+      const expectedNational = Math.floor((gross * 0.0475) / 1000) * 1000;
+      const expectedHealth = Math.floor((gross * 0.03595) / 10) * 10;
+      const expectedLongTerm = Math.floor((gross * 0.00465) / 10) * 10;
+      const expectedEmployment = Math.floor((gross * 0.009) / 10) * 10;
+      const expectedIncome = Math.floor((gross * 0.033) / 10) * 10;
 
       expect(result.nationalPension).toBe(expectedNational);
       expect(result.healthInsurance).toBe(expectedHealth);
       expect(result.longTermCare).toBe(expectedLongTerm);
       expect(result.employmentInsurance).toBe(expectedEmployment);
       expect(result.incomeTax).toBe(expectedIncome);
-      expect(result.localTax).toBe(expectedLocal);
+      expect(result.localTax).toBe(0);
       expect(result.totalTax).toBe(
         expectedNational +
           expectedHealth +
           expectedLongTerm +
           expectedEmployment +
-          expectedIncome +
-          expectedLocal
+          expectedIncome
       );
       expect(result.netPay).toBe(gross - result.totalTax);
       expect(result.netPay).toBeGreaterThan(0);
@@ -127,12 +123,12 @@ describe('taxCalculator', () => {
       expect(result.netPay).toBe(967_000);
     });
 
-    it('taxType labor-income 시 구간별 세율 적용', () => {
+    it('taxType labor-income 시 공제 없음 (3가지 유형 외 존재하지 않음)', () => {
       const result = calculateMonthlyTax('labor-income', 1_500_000);
-      expect(result.incomeTax).toBeGreaterThan(0);
-      expect(result.localTax).toBeGreaterThan(0);
-      expect(result.totalTax).toBe(result.incomeTax + result.localTax);
-      expect(result.netPay).toBe(1_500_000 - result.totalTax);
+      expect(result.totalTax).toBe(0);
+      expect(result.incomeTax).toBe(0);
+      expect(result.localTax).toBe(0);
+      expect(result.netPay).toBe(1_500_000);
     });
   });
 

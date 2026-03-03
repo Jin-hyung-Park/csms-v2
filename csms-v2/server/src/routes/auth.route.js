@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { Router } = require('express');
 const User = require('../models/User');
 const Store = require('../models/Store');
@@ -192,6 +193,85 @@ router.post('/login', async (req, res) => {
     console.error('로그인 오류:', error);
     return res.status(500).json({
       message: '로그인 중 오류가 발생했습니다.',
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * POST /api/auth/forgot-password
+ * 비밀번호 찾기 — 이메일로 재설정 토큰 발급 (이메일 발송 없이 토큰만 저장, 링크는 클라이언트/안내로 전달)
+ */
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({
+        message: '올바른 이메일을 입력해주세요.',
+      });
+    }
+    const user = await User.findOne({ email: email.toLowerCase().trim() }).select('+resetPasswordToken +resetPasswordExpires');
+    if (!user) {
+      // 보안상 동일 메시지 반환
+      return res.json({
+        message: '등록된 이메일인 경우 비밀번호 재설정 링크를 발송했습니다. 이메일을 확인해주세요.',
+      });
+    }
+    const token = crypto.randomBytes(32).toString('hex');
+    user.resetPasswordToken = token;
+    user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000); // 1시간
+    await user.save({ validateBeforeSave: false });
+    return res.json({
+      message: '등록된 이메일인 경우 비밀번호 재설정 링크를 발송했습니다. 이메일을 확인해주세요.',
+      // 개발/배타: 프론트에서 재설정 페이지 링크 생성용 (운영 시 미반환)
+      resetToken: process.env.NODE_ENV !== 'production' ? token : undefined,
+    });
+  } catch (error) {
+    console.error('비밀번호 찾기 오류:', error);
+    return res.status(500).json({
+      message: '처리 중 오류가 발생했습니다.',
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * POST /api/auth/reset-password
+ * 비밀번호 재설정 — 토큰 + 새 비밀번호로 변경
+ */
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      return res.status(400).json({
+        message: '재설정 토큰과 새 비밀번호를 입력해주세요.',
+      });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        message: '비밀번호는 최소 6자 이상이어야 합니다.',
+      });
+    }
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: new Date() },
+    }).select('+password +resetPasswordToken +resetPasswordExpires');
+    if (!user) {
+      return res.status(400).json({
+        message: '재설정 링크가 만료되었거나 유효하지 않습니다. 비밀번호 찾기를 다시 시도해주세요.',
+      });
+    }
+    user.password = newPassword;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+    return res.json({
+      message: '비밀번호가 변경되었습니다. 새 비밀번호로 로그인해주세요.',
+    });
+  } catch (error) {
+    console.error('비밀번호 재설정 오류:', error);
+    return res.status(500).json({
+      message: '비밀번호 재설정 중 오류가 발생했습니다.',
       error: error.message,
     });
   }

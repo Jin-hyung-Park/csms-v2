@@ -1,10 +1,10 @@
 /**
- * 근로소득·사업자소득·4대보험 세금 계산
+ * 세금 유형별 공제 및 실수령액 계산 (3가지 유형만 사용)
  *
- * - labor-income: 근로소득 과세소득 구간별 세율 (소득세법 제55조 2024년 기준, 월 급여 적용)
- * - business-income: 사업자소득 3.3% (소득세 90% + 지방세 10%)
- * - four-insurance: 4대 보험 대상 (국민연금·건강·장기요양·고용보험·소득세·지방세)
- * - none, under-15-hours: 세금 0
+ * - none, under-15-hours: 미신고 / 주 15시간 미만 → 공제 없음 (세금 0)
+ * - business-income: 사업자 소득 → 총 급여의 근로소득세 3.3% 공제
+ * - four-insurance: 4대 보험 대상 → 국민연금 4.75%, 건강보험 3.595%, 장기요양 0.465%, 고용보험 0.9%, 소득세 3.3% 공제
+ * - labor-income: 위 3가지 외 존재하지 않음 → 공제 없음(0) 처리
  */
 
 /** 10원 미만 절사 */
@@ -19,33 +19,27 @@ function floorTo1000(x) {
 
 /**
  * 4대 보험 대상 산정 (대상 급여 = 월 총 급여)
- * - 국민연금: 4.5%, 1000원 미만 절사
- * - 건강보험: 3.545%, 10원 미만 절사
- * - 장기요양: 건강보험료의 12.95%, 10원 미만 절사
- * - 고용보험: 0.9%, 10원 미만 절사
- * - 소득세: 1.53%, 10원 미만 절사
- * - 지방소득세: 소득세의 10%, 10원 미만 절사
+ * - 국민연금 4.75%, 건강보험 3.595%, 장기요양 0.465%, 고용보험 0.9%, 소득세 3.3%
+ * - 실수령액 = 총 급여 - 공제 합계 (지방세 별도 없음)
  *
  * @param {number} monthlyGrossPay - 월 총 급여 (원)
- * @returns {object} 4대보험·소득세·지방세 및 totalTax, netPay
+ * @returns {object} 4대보험·소득세 및 totalTax, netPay
  */
 function calculateFourInsurance(monthlyGrossPay) {
   const gross = Math.max(0, monthlyGrossPay);
 
-  const nationalPension = floorTo1000(gross * 0.045);
-  const healthInsurance = floorTo10(gross * 0.03545);
-  const longTermCare = floorTo10(healthInsurance * 0.1295);
+  const nationalPension = floorTo1000(gross * 0.0475);
+  const healthInsurance = floorTo10(gross * 0.03595);
+  const longTermCare = floorTo10(gross * 0.00465);
   const employmentInsurance = floorTo10(gross * 0.009);
-  const incomeTax = floorTo10(gross * 0.0153);
-  const localTax = floorTo10(incomeTax * 0.1);
+  const incomeTax = floorTo10(gross * 0.033);
 
   const totalTax =
     nationalPension +
     healthInsurance +
     longTermCare +
     employmentInsurance +
-    incomeTax +
-    localTax;
+    incomeTax;
   const netPay = Math.max(0, gross - totalTax);
 
   return {
@@ -54,7 +48,7 @@ function calculateFourInsurance(monthlyGrossPay) {
     longTermCare,
     employmentInsurance,
     incomeTax,
-    localTax,
+    localTax: 0,
     totalTax,
     netPay,
   };
@@ -112,15 +106,13 @@ function calculateLaborIncomeTax(monthlyGrossPay) {
 }
 
 /**
- * 사업자소득 세금 계산 (3.3%)
+ * 사업자 소득 세금 계산: 총 급여의 3.3% 공제 (근로소득세)
  * @param {number} monthlyGrossPay - 월 급여액 (원)
  * @returns {{ incomeTax: number, localTax: number, totalTax: number }}
  */
 function calculateBusinessIncomeTax(monthlyGrossPay) {
   const totalTax = Math.round(Math.max(0, monthlyGrossPay) * 0.033);
-  const incomeTax = Math.round(totalTax * 0.9);
-  const localTax = totalTax - incomeTax;
-  return { incomeTax, localTax, totalTax };
+  return { incomeTax: totalTax, localTax: 0, totalTax };
 }
 
 /**
@@ -143,9 +135,6 @@ function calculateMonthlyTax(taxType, monthlyGrossPay) {
     case 'business-income':
       ({ incomeTax, localTax, totalTax } = calculateBusinessIncomeTax(gross));
       break;
-    case 'labor-income':
-      ({ incomeTax, localTax, totalTax } = calculateLaborIncomeTax(gross));
-      break;
     case 'four-insurance': {
       const four = calculateFourInsurance(gross);
       incomeTax = four.incomeTax;
@@ -159,13 +148,14 @@ function calculateMonthlyTax(taxType, monthlyGrossPay) {
     }
     case 'none':
     case 'under-15-hours':
+    case 'labor-income':
     default:
       totalTax = 0;
       incomeTax = 0;
       localTax = 0;
   }
 
-  const netPay = taxType === 'four-insurance' ? Math.max(0, gross - totalTax) : Math.max(0, gross - totalTax);
+  const netPay = Math.max(0, gross - totalTax);
 
   const result = {
     incomeTax,

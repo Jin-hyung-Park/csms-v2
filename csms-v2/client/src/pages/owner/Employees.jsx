@@ -7,14 +7,16 @@ export default function OwnerEmployeesPage() {
   const navigate = useNavigate();
   const [storeFilter, setStoreFilter] = useState('');
   const [approvalFilter, setApprovalFilter] = useState(''); // '' | 'pending' | 'approved'
+  const [employeeFilter, setEmployeeFilter] = useState(''); // 특정 인원 userId
 
-  // 직원 목록 조회
+  // 직원 목록 조회 (인원 필터 포함)
   const { data, isLoading } = useQuery({
-    queryKey: ['owner-employees', storeFilter, approvalFilter],
+    queryKey: ['owner-employees', storeFilter, approvalFilter, employeeFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (storeFilter) params.append('storeId', storeFilter);
       if (approvalFilter) params.append('approvalStatus', approvalFilter);
+      if (employeeFilter) params.append('userId', employeeFilter);
       const { data } = await apiClient.get(`/owner/employees?${params}`);
       return data;
     },
@@ -28,6 +30,19 @@ export default function OwnerEmployeesPage() {
       const { data } = await apiClient.get('/owner/stores');
       return data;
     },
+  });
+
+  // 인원 드롭다운용 전체 직원 목록 (userId 없이 조회)
+  const { data: employeesOptionsData } = useQuery({
+    queryKey: ['owner-employees-options', storeFilter, approvalFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (storeFilter) params.append('storeId', storeFilter);
+      if (approvalFilter) params.append('approvalStatus', approvalFilter);
+      const { data } = await apiClient.get(`/owner/employees?${params}`);
+      return data;
+    },
+    staleTime: 60 * 1000,
   });
 
   if (isLoading) {
@@ -73,6 +88,18 @@ export default function OwnerEmployeesPage() {
             <option value="">전체</option>
             <option value="pending">승인 대기</option>
             <option value="approved">승인됨</option>
+          </select>
+          <select
+            value={employeeFilter}
+            onChange={(e) => setEmployeeFilter(e.target.value)}
+            className="input-touch flex-1 min-w-0 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base font-semibold text-slate-700 sm:flex-initial"
+          >
+            <option value="">전체 인원</option>
+            {(employeesOptionsData?.items || []).map((emp) => (
+              <option key={emp._id} value={emp._id}>
+                {emp.name}
+              </option>
+            ))}
           </select>
         </div>
       </div>

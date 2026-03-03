@@ -140,7 +140,7 @@ router.get('/dashboard', async (req, res) => {
 router.get('/schedules', async (req, res) => {
   try {
     const owner = req.user;
-    const { status, storeId, month } = req.query;
+    const { status, storeId, month, userId, fromDate, toDate } = req.query;
 
     // 점주가 소유한 점포 목록
     const stores = await Store.find({
@@ -176,8 +176,26 @@ router.get('/schedules', async (req, res) => {
       filter.storeId = storeId;
     }
 
-    // 월별 필터
-    if (month) {
+    // 인원 필터: 특정 직원의 일정만
+    if (userId) {
+      const employee = await User.findOne({
+        _id: userId,
+        storeId: { $in: storeIds },
+        role: 'employee',
+      });
+      if (employee) filter.userId = employee._id;
+    }
+
+    // 일자 필터: fromDate~toDate 우선, 없으면 month
+    if (fromDate && toDate) {
+      const start = new Date(fromDate);
+      const end = new Date(toDate);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
+        filter.workDate = { $gte: start, $lte: end };
+      }
+    } else if (month) {
       const [y, m] = month.split('-').map((n) => parseInt(n, 10));
       const start = getStartOfMonth(y, m);
       const end = getEndOfMonth(y, m);
@@ -415,7 +433,7 @@ router.delete('/schedules/:id', async (req, res) => {
 router.get('/employees', async (req, res) => {
   try {
     const owner = req.user;
-    const { storeId, approvalStatus } = req.query;
+    const { storeId, approvalStatus, userId } = req.query;
 
     // 점주가 소유한 점포 목록
     const stores = await Store.find({
@@ -439,6 +457,11 @@ router.get('/employees', async (req, res) => {
     // 점포 필터
     if (storeId && storeIds.some((id) => id.toString() === storeId)) {
       filter.storeId = storeId;
+    }
+
+    // 인원 필터: 특정 직원만 조회
+    if (userId && userId.trim()) {
+      filter._id = userId.trim();
     }
 
     // 가입 승인 상태 필터 (pending: 승인 대기, approved: 승인됨)

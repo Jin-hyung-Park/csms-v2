@@ -6,6 +6,8 @@ import EmployeeLayout from './layouts/EmployeeLayout';
 import OwnerLayout from './layouts/OwnerLayout';
 import LoginPage from './pages/auth/Login';
 import RegisterPage from './pages/auth/Register';
+import ForgotPasswordPage from './pages/auth/ForgotPassword';
+import ResetPasswordPage from './pages/auth/ResetPassword';
 import EmployeeDashboardPage from './pages/employee/Dashboard';
 import EmployeeSchedulePage from './pages/employee/Schedule';
 import EmployeeSalaryPage from './pages/employee/Salary';
@@ -37,6 +39,8 @@ function App() {
         {/* 인증 페이지 (로그인/회원가입) */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* 보호된 라우트 - 직원 */}
         <Route element={<EmployeeLayout />}>

@@ -119,13 +119,16 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 text-center">
+          <div className="mt-6 flex flex-col items-center gap-2 text-center">
             <p className="text-sm text-slate-600">
               계정이 없으신가요?{' '}
               <Link to="/register" className="inline-block py-2 font-semibold text-brand-600 hover:text-brand-700 active:opacity-80">
                 회원가입
               </Link>
             </p>
+            <Link to="/forgot-password" className="text-sm font-medium text-slate-500 hover:text-slate-700">
+              비밀번호 찾기
+            </Link>
           </div>
         </div>
       </div>

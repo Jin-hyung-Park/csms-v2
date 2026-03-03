@@ -3,7 +3,7 @@
  *
  * - none, under-15-hours: 미신고 / 주 15시간 미만 → 공제 없음 (세금 0)
  * - business-income: 사업자 소득 → 총 급여의 근로소득세 3.3% 공제
- * - four-insurance: 4대 보험 대상 → 국민연금 4.75%, 건강보험 3.595%, 장기요양 0.465%, 고용보험 0.9%, 소득세 3.3% 공제
+ * - four-insurance: 4대 보험 대상 → 국민연금 4.75%, 건강보험 3.595%, 장기요양 0.465%, 고용보험 0.9%, 소득세 1.68% 공제
  * - labor-income: 위 3가지 외 존재하지 않음 → 공제 없음(0) 처리
  */
 
@@ -19,7 +19,7 @@ function floorTo1000(x) {
 
 /**
  * 4대 보험 대상 산정 (대상 급여 = 월 총 급여)
- * - 국민연금 4.75%, 건강보험 3.595%, 장기요양 0.465%, 고용보험 0.9%, 소득세 3.3%
+ * - 국민연금 4.75%, 건강보험 3.595%, 장기요양 0.465%, 고용보험 0.9%, 소득세 1.68%
  * - 실수령액 = 총 급여 - 공제 합계 (지방세 별도 없음)
  *
  * @param {number} monthlyGrossPay - 월 총 급여 (원)
@@ -32,7 +32,7 @@ function calculateFourInsurance(monthlyGrossPay) {
   const healthInsurance = floorTo10(gross * 0.03595);
   const longTermCare = floorTo10(gross * 0.00465);
   const employmentInsurance = floorTo10(gross * 0.009);
-  const incomeTax = floorTo10(gross * 0.033);
+  const incomeTax = floorTo10(gross * 0.0168);
 
   const totalTax =
     nationalPension +

@@ -336,6 +336,44 @@ export default function OwnerSalaryDetailPage() {
                 </div>
               </div>
 
+              {/* 일별 근무 (근로자 급여확인과 동일: 근무일·승인상태 노출) */}
+              <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3">
+                <p className="text-xs font-semibold text-slate-500">일별 근무</p>
+                <ul className="mt-2 space-y-2 text-sm">
+                  {week.dailySchedules?.length ? (
+                    week.dailySchedules.map((day) => (
+                      <li key={day.id || `${day.date}-${day.startTime}`} className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold text-slate-900">
+                            {day.dayOfWeek} {day.startTime}~{day.endTime}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {day.date} · {day.storeName} ({day.hours}h)
+                          </p>
+                        </div>
+                        <span
+                          className={`text-xs font-semibold ${
+                            day.status === 'approved'
+                              ? 'text-emerald-600'
+                              : day.status === 'pending'
+                                ? 'text-amber-600'
+                                : day.status === 'rejected'
+                                  ? 'text-red-500'
+                                  : 'text-slate-500'
+                          }`}
+                        >
+                          {day.status === 'approved' && '승인'}
+                          {day.status === 'pending' && '미승인'}
+                          {day.status === 'rejected' && '거절'}
+                        </span>
+                      </li>
+                    ))
+                  ) : (
+                    <p className="text-xs text-slate-500">등록된 근무가 없습니다.</p>
+                  )}
+                </ul>
+              </div>
+
               {/* 주휴수당 계산 정보 */}
               {week.holidayPayCalculation?.calculated && (
                 <div className="mt-3 rounded-xl bg-white p-3 text-xs">

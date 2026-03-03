@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { calculateMonthlyTax } = require('../utils/taxCalculator');
 
 /**
  * MonthlySalary 모델
@@ -408,18 +409,18 @@ MonthlySalarySchema.methods.recalculateTotals = function () {
     0
   );
 
-  // 세금 계산 (간단한 계산, 추후 정확한 로직으로 대체)
-  if (this.taxType === 'business-income') {
-    this.taxInfo.totalTax = Math.round(this.totalGrossPay * 0.033);
-    this.taxInfo.incomeTax = Math.round(this.taxInfo.totalTax * 0.9);
-    this.taxInfo.localTax = Math.round(this.taxInfo.totalTax * 0.1);
-  } else {
-    this.taxInfo.totalTax = 0;
-    this.taxInfo.incomeTax = 0;
-    this.taxInfo.localTax = 0;
+  // 세금 재계산 (주휴수당 수정 등으로 totalGrossPay 변경 시 taxType별로 동일 로직 적용, 세금 정보 유지)
+  const taxResult = calculateMonthlyTax(this.taxType || 'none', this.totalGrossPay);
+  this.taxInfo.incomeTax = taxResult.incomeTax;
+  this.taxInfo.localTax = taxResult.localTax;
+  this.taxInfo.totalTax = taxResult.totalTax;
+  this.taxInfo.netPay = taxResult.netPay;
+  if (taxResult.nationalPension !== undefined) {
+    this.taxInfo.nationalPension = taxResult.nationalPension;
+    this.taxInfo.healthInsurance = taxResult.healthInsurance;
+    this.taxInfo.longTermCare = taxResult.longTermCare;
+    this.taxInfo.employmentInsurance = taxResult.employmentInsurance;
   }
-
-  this.taxInfo.netPay = this.totalGrossPay - this.taxInfo.totalTax;
 
   return this;
 };

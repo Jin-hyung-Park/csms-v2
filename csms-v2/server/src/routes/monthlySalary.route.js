@@ -7,6 +7,8 @@ const {
   getStartOfMonth,
   getEndOfMonth,
   getMonthlyWeeksForHolidayPay,
+  formatLocalDate,
+  getDayOfWeek,
 } = require('../utils/dateHelpers');
 const {
   calculateHolidayPay,
@@ -113,8 +115,45 @@ router.get('/:userId/:year/:month', async (req, res) => {
       }
     }
 
+    // 주차별 일별 근무 내역(승인 상태 포함) 조회 - 근로자 급여확인과 동일하게 노출
+    const monthStart = getStartOfMonth(yearNum, monthNum);
+    const monthEnd = getEndOfMonth(yearNum, monthNum);
+    const allSchedules = await WorkSchedule.find({
+      userId: userIdObj,
+      workDate: { $gte: monthStart, $lte: monthEnd },
+    })
+      .populate('storeId', 'name')
+      .sort({ workDate: 1, startTime: 1 })
+      .lean();
+
+    const weeklyDetailsWithDaily = (salary.weeklyDetails || []).map((week) => {
+      const wStart = week.startDate ? new Date(week.startDate) : null;
+      const wEnd = week.endDate ? new Date(week.endDate) : null;
+      const dailySchedules = !wStart || !wEnd
+        ? []
+        : allSchedules
+            .filter((s) => {
+              const d = new Date(s.workDate);
+              return d >= wStart && d <= wEnd;
+            })
+            .map((s) => ({
+              id: s._id.toString(),
+              date: formatLocalDate(s.workDate),
+              dayOfWeek: getDayOfWeek(s.workDate),
+              storeName: s.storeId?.name || '점포 정보 없음',
+              startTime: s.startTime,
+              endTime: s.endTime,
+              hours: s.totalHours || 0,
+              status: s.status || 'pending',
+            }));
+      return { ...week, dailySchedules };
+    });
+
     res.json({
-      salary,
+      salary: {
+        ...salary,
+        weeklyDetails: weeklyDetailsWithDaily,
+      },
     });
   } catch (error) {
     console.error('월별 급여 상세 조회 오류:', error);

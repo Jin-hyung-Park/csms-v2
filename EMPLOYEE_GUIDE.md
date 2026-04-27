@@ -18,11 +18,11 @@
 
 앱 접속 후 로그인 화면 하단의 **"회원가입"** 링크를 누릅니다.
 
-<img src="./screenshot/회원가입#1.png" width="320" alt="로그인 화면">
+<img src="https://raw.githubusercontent.com/Jin-hyung-Park/csms-v2/feature/user-model-extension/screenshot/%ED%9A%8C%EC%9B%90%EA%B0%80%EC%9E%85_1.png" width="320" alt="로그인 화면">
 
 회원가입 화면에서 아래 항목을 입력합니다.
 
-<img src="./screenshot/회원가입#2.png" width="320" alt="회원가입 양식">
+<img src="https://raw.githubusercontent.com/Jin-hyung-Park/csms-v2/feature/user-model-extension/screenshot/%ED%9A%8C%EC%9B%90%EA%B0%80%EC%9E%85_2.png" width="320" alt="회원가입 양식">
 
 | 항목 | 입력 내용 |
 |------|-----------|
@@ -37,7 +37,7 @@
 > ⚠️ **매장코드는 반드시 `CU001`을 입력하고 검증 버튼을 눌러야 합니다.**  
 > 검증 후 "매장: CU 대치메가점" 문구가 나타나면 정상입니다.
 
-<img src="./screenshot/회원가입#3.png" width="320" alt="회원가입 입력 완료 예시">
+<img src="https://raw.githubusercontent.com/Jin-hyung-Park/csms-v2/feature/user-model-extension/screenshot/%ED%9A%8C%EC%9B%90%EA%B0%80%EC%9E%85_3.png" width="320" alt="회원가입 입력 완료 예시">
 
 매장코드 검증 확인 후 **"회원가입"** 버튼을 누릅니다.
 
@@ -49,7 +49,7 @@
 
 > **"가입 승인 대기 중입니다. 점주 승인 후 서비스를 이용할 수 있습니다."**
 
-<img src="./screenshot/회원가입#4(가입승인대기).png" width="320" alt="가입 승인 대기 화면">
+<img src="https://raw.githubusercontent.com/Jin-hyung-Park/csms-v2/feature/user-model-extension/screenshot/%ED%9A%8C%EC%9B%90%EA%B0%80%EC%9E%85_4_%EA%B0%80%EC%9E%85%EC%8A%B9%EC%9D%B8%EB%8C%80%EA%B8%B0.png" width="320" alt="가입 승인 대기 화면">
 
 이 상태에서는 점주가 승인하기 전까지 대기해야 합니다.  
 **점주에게 가입 사실을 알려주세요.**
@@ -60,7 +60,7 @@
 
 점주가 승인하면 대시보드에 근무 정보가 표시됩니다.
 
-<img src="./screenshot/회원가입#5(승인완료).png" width="320" alt="승인 완료 후 대시보드">
+<img src="https://raw.githubusercontent.com/Jin-hyung-Park/csms-v2/feature/user-model-extension/screenshot/%ED%9A%8C%EC%9B%90%EA%B0%80%EC%9E%85_5_%EC%8A%B9%EC%9D%B8%EC%99%84%EB%A3%8C.png" width="320" alt="승인 완료 후 대시보드">
 
 승인 완료 시 확인할 수 있는 정보:
 - 근무 점포: **CU 대치메가점**
@@ -75,7 +75,7 @@
 
 하단 탭에서 **"근무표"** 를 누릅니다.
 
-<img src="./screenshot/근무시간입력.png" width="320" alt="근무시간 입력 화면">
+<img src="https://raw.githubusercontent.com/Jin-hyung-Park/csms-v2/feature/user-model-extension/screenshot/%EA%B7%BC%EB%AC%B4%EC%8B%9C%EA%B0%84%EC%9E%85%EB%A0%A5.png" width="320" alt="근무시간 입력 화면">
 
 **근무 일정 등록** 섹션에서 아래 항목을 입력합니다.
 
@@ -96,7 +96,7 @@
 
 저장 후 **근무 내역 조회** 섹션에서 월/주차를 선택하면 입력한 내역을 확인할 수 있습니다.
 
-<img src="./screenshot/근무시간입력(확인).png" width="320" alt="근무시간 입력 내역 확인">
+<img src="https://raw.githubusercontent.com/Jin-hyung-Park/csms-v2/feature/user-model-extension/screenshot/%EA%B7%BC%EB%AC%B4%EC%8B%9C%EA%B0%84%EC%9E%85%EB%A0%A5_%ED%99%95%EC%9D%B8.png" width="320" alt="근무시간 입력 내역 확인">
 
 각 근무 내역 옆의 버튼으로 아래 작업이 가능합니다.
 

@@ -5,7 +5,6 @@ import ScheduleCalendar from './ScheduleCalendar';
 
 const now = new Date();
 const THIS_YEAR = now.getFullYear();
-const THIS_MONTH = now.getMonth() + 1;
 
 const STATUS_OPTIONS = [
   { value: '', label: '전체', color: 'bg-slate-100 text-slate-700', active: 'bg-slate-700 text-white' },

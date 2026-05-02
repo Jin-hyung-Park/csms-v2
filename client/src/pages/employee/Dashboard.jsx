@@ -38,52 +38,52 @@ export default function EmployeeDashboardPage() {
     );
   }
 
+  const workInfo = data.workInfo ?? {};
+  const contractInfo = workInfo.contractInfo ?? {};
+  const thisWeekWork = data.thisWeekWork ?? {};
+  const lastMonthSalary = data.lastMonthSalary ?? {};
+  const taxInfo = lastMonthSalary.taxInfo ?? {};
+
   return (
     <div className="space-y-5 pb-8">
       <DashboardCard
         title="근무 점포 및 계약 정보"
-        description={`${data.workInfo.storeName} · ${data.workInfo.contractInfo.workDays}`}
-        onClick={() => navigate(data.workInfo.link)}
+        description={`${workInfo.storeName ?? ''} · ${contractInfo.workDays ?? ''}`}
+        onClick={() => navigate(workInfo.link ?? '/employee/schedule')}
       >
         <div className="space-y-2 text-sm text-slate-600">
-          <InfoRow label="근무 점포" value={data.workInfo.storeName} />
-          <InfoRow label="주소" value={data.workInfo.storeAddress} />
+          <InfoRow label="근무 점포" value={workInfo.storeName ?? '-'} />
+          <InfoRow label="주소" value={workInfo.storeAddress ?? '-'} />
         </div>
         <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-slate-600">
-          <InfoRow label="근무 요일" value={data.workInfo.contractInfo.workDays} />
-          <InfoRow label="근무 시간" value={data.workInfo.contractInfo.workTime} />
-          <InfoRow
-            label="주간 계약"
-            value={`${data.workInfo.contractInfo.weeklyHours}시간`}
-          />
+          <InfoRow label="근무 요일" value={contractInfo.workDays ?? '-'} />
+          <InfoRow label="근무 시간" value={contractInfo.workTime ?? '-'} />
+          <InfoRow label="주간 계약" value={`${contractInfo.weeklyHours ?? 0}시간`} />
           <InfoRow
             label="시급"
-            value={currency.format(data.workInfo.contractInfo.hourlyWage)}
+            value={currency.format(contractInfo.hourlyWage ?? 0)}
             highlight
           />
-          <InfoRow label="세금" value={data.workInfo.contractInfo.taxType} />
+          <InfoRow label="세금" value={contractInfo.taxType ?? '-'} />
         </div>
       </DashboardCard>
 
       <DashboardCard
-        title={`이번 주 근무 현황 (${data.thisWeekWork.weekNumber}주차)`}
-        description={data.thisWeekWork.weekRange}
-        onClick={() => navigate(data.thisWeekWork.link)}
+        title={`이번 주 근무 현황 (${thisWeekWork.weekNumber ?? '-'}주차)`}
+        description={thisWeekWork.weekRange ?? ''}
+        onClick={() => navigate(thisWeekWork.link ?? '/employee/schedule')}
       >
         <div className="grid grid-cols-3 gap-3 text-center text-slate-600">
-          <Metric label="총 근무시간" value={`${data.thisWeekWork.totalHours}h`} />
-          <Metric label="근무일수" value={`${data.thisWeekWork.workDays}일`} />
-          <Metric
-            label="예상 급여"
-            value={currency.format(data.thisWeekWork.estimatedPay)}
-          />
+          <Metric label="총 근무시간" value={`${thisWeekWork.totalHours ?? 0}h`} />
+          <Metric label="근무일수" value={`${thisWeekWork.workDays ?? 0}일`} />
+          <Metric label="예상 급여" value={currency.format(thisWeekWork.estimatedPay ?? 0)} />
         </div>
         <div className="mt-4 flex flex-wrap gap-2 text-xs">
-          <StatusPill label="승인 완료" value={`${data.thisWeekWork.approvedCount}건`} />
-          {data.thisWeekWork.pendingCount > 0 && (
+          <StatusPill label="승인 완료" value={`${thisWeekWork.approvedCount ?? 0}건`} />
+          {(thisWeekWork.pendingCount ?? 0) > 0 && (
             <StatusPill
               label="승인 대기"
-              value={`${data.thisWeekWork.pendingCount}건`}
+              value={`${thisWeekWork.pendingCount}건`}
               variant="warning"
             />
           )}
@@ -91,39 +91,30 @@ export default function EmployeeDashboardPage() {
       </DashboardCard>
 
       <DashboardCard
-        title={`직전월 급여 (${data.lastMonthSalary.monthLabel})`}
+        title={`직전월 급여 (${lastMonthSalary.monthLabel ?? '-'})`}
         description="주휴수당 포함 금액"
-        onClick={() => navigate(data.lastMonthSalary.link)}
+        onClick={() => navigate(lastMonthSalary.link ?? '/employee/salary')}
       >
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-slate-600">
-          <InfoRow
-            label="총 근무시간"
-            value={`${data.lastMonthSalary.totalHours}시간`}
-          />
-          <InfoRow
-            label="기본급"
-            value={currency.format(data.lastMonthSalary.basePay)}
-          />
-          <InfoRow
-            label="주휴수당"
-            value={currency.format(data.lastMonthSalary.holidayPay)}
-          />
+          <InfoRow label="총 근무시간" value={`${lastMonthSalary.totalHours ?? 0}시간`} />
+          <InfoRow label="기본급" value={currency.format(lastMonthSalary.basePay ?? 0)} />
+          <InfoRow label="주휴수당" value={currency.format(lastMonthSalary.holidayPay ?? 0)} />
           <InfoRow
             label="총 지급액"
-            value={currency.format(data.lastMonthSalary.grossPay)}
+            value={currency.format(lastMonthSalary.grossPay ?? 0)}
             highlight
           />
           <InfoRow
             label="세금"
-            value={`-${currency.format(data.lastMonthSalary.taxInfo.taxAmount)}`}
+            value={`-${currency.format(taxInfo.taxAmount ?? 0)}`}
           />
         </div>
         <div className="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-center">
           <p className="text-xs font-medium text-emerald-600">실수령액</p>
           <p className="text-2xl font-semibold text-emerald-700">
-            {currency.format(data.lastMonthSalary.taxInfo.netPay)}
+            {currency.format(taxInfo.netPay ?? lastMonthSalary.grossPay ?? 0)}
           </p>
-          {data.lastMonthSalary.isConfirmed && (
+          {lastMonthSalary.isConfirmed && (
             <p className="text-xs text-emerald-600">✅ 점주 확정 완료</p>
           )}
         </div>
@@ -131,7 +122,7 @@ export default function EmployeeDashboardPage() {
 
       <DashboardCard title="읽지 않은 알림" description="승인 결과를 확인하세요">
         <p className="text-center text-2xl font-semibold text-brand-600">
-          {number.format(data.unreadNotifications)}건
+          {number.format(data.unreadNotifications ?? 0)}건
         </p>
       </DashboardCard>
     </div>

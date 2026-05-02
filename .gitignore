@@ -54,6 +54,9 @@ coverage/
 *.pid
 *.lock
 
+# SSH keys
+*.pem
+
 # Package manager locks (선택사항 - 팀 정책에 따라)
 # package-lock.json
 # yarn.lock

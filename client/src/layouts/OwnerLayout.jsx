@@ -6,6 +6,8 @@ const navItems = [
   { id: 'dashboard', label: '홈', path: '/owner/dashboard', icon: '🏠' },
   { id: 'schedules', label: '승인', path: '/owner/schedules', icon: '✅' },
   { id: 'employees', label: '직원', path: '/owner/employees', icon: '👥' },
+  { id: 'salary', label: '급여', path: '/owner/salary', icon: '💰' },
+  { id: 'notifications', label: '알림', path: '/owner/notifications', icon: '🔔' },
   { id: 'stores', label: '점포', path: '/owner/stores', icon: '🏪' },
 ];
 

@@ -11,6 +11,7 @@ const {
   formatDateRange,
   formatMonthLabel,
 } = require('../utils/dateHelpers');
+const { getMonthlyWeeksForHolidayPay } = require('../utils/holidayPayCalculator');
 
 const router = Router();
 
@@ -768,6 +769,118 @@ router.delete('/stores/:id', async (req, res) => {
     console.error('점포 비활성화 오류:', error);
     res.status(500).json({
       message: '점포 비활성화 중 오류가 발생했습니다.',
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * GET /api/owner/salary-preview
+ * 급여산정 전 복지포인트 미리보기 (직원별 주차별 근무시간 + 복지포인트)
+ */
+router.get('/salary-preview', async (req, res) => {
+  try {
+    const owner = req.user;
+    const { year, month, storeId } = req.query;
+
+    if (!year || !month) {
+      return res.status(400).json({ message: 'year, month는 필수 항목입니다.' });
+    }
+
+    const yearNum = parseInt(year, 10);
+    const monthNum = parseInt(month, 10);
+
+    // 점주 소유 점포 확인
+    const storeQuery = { ownerId: owner._id, isActive: true };
+    if (storeId) storeQuery._id = storeId;
+    const stores = await Store.find(storeQuery);
+
+    if (stores.length === 0) {
+      return res.json({ previewMap: {} });
+    }
+
+    const storeIds = stores.map((s) => s._id);
+
+    // 해당 점포의 활성 직원 목록
+    const employees = await User.find({
+      storeId: { $in: storeIds },
+      role: 'employee',
+      isActive: true,
+    }).lean();
+
+    const monthStart = getStartOfMonth(yearNum, monthNum);
+    const monthEnd = getEndOfMonth(yearNum, monthNum);
+    const monthlyWeeks = getMonthlyWeeksForHolidayPay(yearNum, monthNum);
+
+    if (monthlyWeeks.length === 0) {
+      return res.json({ previewMap: {} });
+    }
+
+    const firstWeekStart = new Date(monthlyWeeks[0].startDate);
+    const lastWeekEnd = new Date(monthlyWeeks[monthlyWeeks.length - 1].endDate);
+
+    const WELFARE_POINT_UNIT = 1700;
+    const previewMap = {};
+
+    for (const employee of employees) {
+      const schedules = await WorkSchedule.find({
+        userId: employee._id,
+        workDate: { $gte: firstWeekStart, $lte: lastWeekEnd },
+        status: 'approved',
+      }).sort({ workDate: 1 }).lean();
+
+      const weeklyDetails = [];
+
+      for (const weekInfo of monthlyWeeks) {
+        const weekStartDate = new Date(weekInfo.startDate);
+        const weekEndDate = new Date(weekInfo.endDate);
+
+        const weekSchedules = schedules.filter((s) => {
+          const d = new Date(s.workDate);
+          return d >= weekStartDate && d <= weekEndDate;
+        });
+
+        // 기본급: 해당 월 내 근무시간만
+        const monthSchedules = weekSchedules.filter((s) => {
+          const d = new Date(s.workDate);
+          return d >= monthStart && d <= monthEnd;
+        });
+        const workHours = Math.round(monthSchedules.reduce((sum, s) => sum + (s.totalHours || 0), 0) * 100) / 100;
+        const hourlyWage = employee.hourlyWage || 10320;
+        const basePay = Math.round(workHours * hourlyWage);
+
+        // 복지포인트: 월요일 기준 월 귀속, 전체 주 시간 적용
+        const fullWeekHours = weekSchedules.reduce((sum, s) => sum + (s.totalHours || 0), 0);
+        const welfarePoints = weekInfo.startsInPrevMonth
+          ? 0
+          : Math.floor(fullWeekHours / 4) * WELFARE_POINT_UNIT;
+
+        weeklyDetails.push({
+          weekNumber: weekInfo.weekNumber,
+          range: formatDateRange(weekInfo.startDate, weekInfo.endDate),
+          workHours,
+          basePay,
+          welfarePoints,
+        });
+      }
+
+      const totalHours = Math.round(weeklyDetails.reduce((sum, w) => sum + w.workHours, 0) * 100) / 100;
+      const totalBasePay = weeklyDetails.reduce((sum, w) => sum + w.basePay, 0);
+      const totalWelfarePoints = weeklyDetails.reduce((sum, w) => sum + w.welfarePoints, 0);
+
+      previewMap[employee._id.toString()] = {
+        totalHours,
+        totalBasePay,
+        totalWelfarePoints,
+        weeklyDetails,
+      };
+    }
+
+    res.json({ previewMap });
+  } catch (error) {
+    console.error('복지포인트 미리보기 조회 오류:', error);
+    res.status(500).json({
+      message: '복지포인트 미리보기 조회 중 오류가 발생했습니다.',
       error: error.message,
     });
   }

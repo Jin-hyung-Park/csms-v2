@@ -6,12 +6,12 @@ const WorkSchedule = require('../models/WorkSchedule');
 const {
   getStartOfMonth,
   getEndOfMonth,
-  getMonthlyWeeksForHolidayPay,
   formatLocalDate,
   getDayOfWeek,
 } = require('../utils/dateHelpers');
 const {
   calculateHolidayPay,
+  getMonthlyWeeksForHolidayPay,
 } = require('../utils/holidayPayCalculator');
 const { calculateMonthlyTax } = require('../utils/taxCalculator');
 
@@ -248,11 +248,13 @@ router.post('/calculate', async (req, res) => {
       status: 'approved',
     }).sort({ workDate: 1 });
 
+    const WELFARE_POINT_UNIT = 1700;
+
     // 주차별 데이터 계산
     for (const weekInfo of monthlyWeeks) {
       const weekStartDate = new Date(weekInfo.startDate);
       const weekEndDate = new Date(weekInfo.endDate);
-      
+
       // 해당 주의 근무 기록 필터링
       const weekSchedules = schedules.filter((schedule) => {
         const scheduleDate = new Date(schedule.workDate);
@@ -267,6 +269,13 @@ router.post('/calculate', async (req, res) => {
 
       const weekHours = monthSchedules.reduce((sum, s) => sum + (s.totalHours || 0), 0);
       const weekDays = monthSchedules.length;
+
+      // 복지포인트: 해당 주의 월요일이 속한 월에 전체 주 근무시간 기준으로 산정
+      // 월요일이 전월에 속하는 경우(startsInPrevMonth)는 전월 산정분이므로 이번 달에서 제외
+      const fullWeekHours = weekSchedules.reduce((sum, s) => sum + (s.totalHours || 0), 0);
+      const welfarePoints = weekInfo.startsInPrevMonth
+        ? 0
+        : Math.floor(fullWeekHours / 4) * WELFARE_POINT_UNIT;
       const weekBasePay = Math.round(weekHours * (employee.hourlyWage ?? employee.storeId?.minimumWage ?? 10320));
       
       // 주휴수당 계산 (이 주차를 현재 월에 산정해야 하는 경우에만)
@@ -314,6 +323,7 @@ router.post('/calculate', async (req, res) => {
             adjustedAt: null,
           },
         },
+        welfarePoints,
         // 월 경계 정보
         crossesMonthBoundary: weekInfo.crossesMonthBoundary,
         holidayPayMonth: weekInfo.holidayPayMonth,
@@ -328,10 +338,9 @@ router.post('/calculate', async (req, res) => {
     const totalHolidayPay = weeklyDetails.reduce((sum, w) => sum + w.holidayPay, 0);
     const totalGrossPay = totalBasePay + totalHolidayPay;
 
-    // 복지포인트: trunc(실 근로시간/4, 0) × 1,700원, 주차별 합산
-    const WELFARE_POINT_UNIT = 1700;
+    // 복지포인트: 주차별 welfarePoints 합산 (월요일 기준 월 귀속, 전체 주 시간 적용)
     const totalWelfarePoints = weeklyDetails.reduce(
-      (sum, w) => sum + Math.floor((w.workHours || 0) / 4) * WELFARE_POINT_UNIT,
+      (sum, w) => sum + (w.welfarePoints || 0),
       0
     );
 

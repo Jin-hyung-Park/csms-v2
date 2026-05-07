@@ -82,6 +82,12 @@ const MonthlySalarySchema = new mongoose.Schema(
       default: 0,
       min: [0, '총 지급액은 0 이상이어야 합니다'],
     },
+    totalWelfarePoints: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: [0, '복지포인트는 0 이상이어야 합니다'],
+    },
     // 세금 정보
     taxInfo: {
       incomeTax: {
@@ -153,9 +159,15 @@ const MonthlySalarySchema = new mongoose.Schema(
           default: 0,
           min: [0, '주간 총액은 0 이상이어야 합니다'],
         },
+        welfarePoints: {
+          type: Number,
+          required: true,
+          default: 0,
+          min: [0, '복지포인트는 0 이상이어야 합니다'],
+        },
         holidayPayStatus: {
           type: String,
-          enum: ['pending', 'calculated', 'adjusted', 'confirmed'],
+          enum: ['pending', 'calculated', 'not_eligible', 'pending_next_month', 'adjusted', 'confirmed'],
           default: 'pending',
         },
         holidayPayCalculation: {

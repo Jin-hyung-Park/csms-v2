@@ -373,7 +373,7 @@ export default function OwnerSalaryPage() {
                               {currency.format(week.holidayPay)}
                             </td>
                             <td className="px-3 py-2.5 text-right font-semibold text-violet-600">
-                              {currency.format(Math.floor((week.workHours || 0) / 4) * 1700)}
+                              {currency.format(week.welfarePoints ?? 0)}
                             </td>
                             <td className="px-3 py-2.5 text-right font-bold text-brand-600">
                               {currency.format(week.weeklyTotal)}

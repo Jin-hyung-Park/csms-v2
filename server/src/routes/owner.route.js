@@ -503,7 +503,7 @@ router.put('/employees/:id', async (req, res) => {
   try {
     const owner = req.user;
     const { id } = req.params;
-    const { hourlyWage, workSchedule, taxType } = req.body;
+    const { hourlyWage, workSchedule, taxType, ssn, hiredAt, probationEndDate, position } = req.body;
 
     // 직원 조회
     const employee = await User.findById(id).populate({
@@ -542,16 +542,18 @@ router.put('/employees/:id', async (req, res) => {
     }
     
     if (taxType !== undefined) {
-      // taxType 검증
       const validTaxTypes = ['none', 'under-15-hours', 'business-income', 'labor-income'];
       if (validTaxTypes.includes(taxType)) {
         updateData.taxType = taxType;
       } else {
-        return res.status(400).json({
-          message: '올바른 세금 타입이 아닙니다.',
-        });
+        return res.status(400).json({ message: '올바른 세금 타입이 아닙니다.' });
       }
     }
+
+    if (ssn !== undefined) updateData.ssn = ssn.trim();
+    if (hiredAt !== undefined) updateData.hiredAt = hiredAt ? new Date(hiredAt) : null;
+    if (probationEndDate !== undefined) updateData.probationEndDate = probationEndDate ? new Date(probationEndDate) : null;
+    if (position !== undefined) updateData.position = position.trim();
 
     // User 정보 업데이트
     const updatedEmployee = await User.findByIdAndUpdate(

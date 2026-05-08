@@ -106,6 +106,23 @@ const UserSchema = new mongoose.Schema(
       trim: true,
       maxlength: 50,
     },
+    // 주민번호 (근로자만, 급여 신고용)
+    ssn: {
+      type: String,
+      default: '',
+      trim: true,
+      maxlength: 14,
+    },
+    // 입사일
+    hiredAt: {
+      type: Date,
+      default: null,
+    },
+    // 수습 종료일
+    probationEndDate: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );

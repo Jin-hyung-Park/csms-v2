@@ -59,6 +59,18 @@ async function seedUsers() {
       password: 'password123', // pre-save hook에서 자동 해싱
       phone: '010-1234-5678',
       role: 'employee',
+      hourlyWage: 10030,
+      taxType: 'business-income',
+      position: '파트타이머',
+      workSchedule: {
+        monday: { enabled: true, startTime: '18:00', endTime: '23:00' },
+        tuesday: { enabled: false, startTime: '09:00', endTime: '18:00' },
+        wednesday: { enabled: true, startTime: '18:00', endTime: '23:00' },
+        thursday: { enabled: false, startTime: '09:00', endTime: '18:00' },
+        friday: { enabled: true, startTime: '18:00', endTime: '23:00' },
+        saturday: { enabled: false, startTime: '09:00', endTime: '18:00' },
+        sunday: { enabled: false, startTime: '09:00', endTime: '18:00' },
+      },
     },
     {
       name: '김철수',
@@ -66,6 +78,18 @@ async function seedUsers() {
       password: 'password123',
       phone: '010-2345-6789',
       role: 'employee',
+      hourlyWage: 11000,
+      taxType: 'business-income',
+      position: '파트타이머',
+      workSchedule: {
+        monday: { enabled: false, startTime: '09:00', endTime: '18:00' },
+        tuesday: { enabled: true, startTime: '09:00', endTime: '18:00' },
+        wednesday: { enabled: false, startTime: '09:00', endTime: '18:00' },
+        thursday: { enabled: true, startTime: '09:00', endTime: '18:00' },
+        friday: { enabled: false, startTime: '09:00', endTime: '18:00' },
+        saturday: { enabled: true, startTime: '09:00', endTime: '18:00' },
+        sunday: { enabled: false, startTime: '09:00', endTime: '18:00' },
+      },
     },
     {
       name: '이영희',
@@ -73,6 +97,7 @@ async function seedUsers() {
       password: 'password123',
       phone: '010-3456-7890',
       role: 'owner',
+      // 점주는 hourlyWage, workSchedule, taxType 불필요
     },
   ];
 

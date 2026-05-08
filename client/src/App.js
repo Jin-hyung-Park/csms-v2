@@ -15,6 +15,10 @@ import OwnerDashboardPage from './pages/owner/Dashboard';
 import OwnerSchedulesPage from './pages/owner/Schedules';
 import OwnerEmployeesPage from './pages/owner/Employees';
 import OwnerStoresPage from './pages/owner/Stores';
+import OwnerSalaryPage from './pages/owner/Salary';
+import OwnerSalaryDetailPage from './pages/owner/SalaryDetail';
+import OwnerNotificationsPage from './pages/owner/Notifications';
+import OwnerEmployeeDetailPage from './pages/owner/EmployeeDetail';
 import RoleBasedRedirect from './components/RoleBasedRedirect';
 
 function App() {
@@ -47,7 +51,11 @@ function App() {
           <Route path="/owner/dashboard" element={<OwnerDashboardPage />} />
           <Route path="/owner/schedules" element={<OwnerSchedulesPage />} />
           <Route path="/owner/employees" element={<OwnerEmployeesPage />} />
+          <Route path="/owner/employees/:id" element={<OwnerEmployeeDetailPage />} />
           <Route path="/owner/stores" element={<OwnerStoresPage />} />
+          <Route path="/owner/salary" element={<OwnerSalaryPage />} />
+          <Route path="/owner/salary/:userId/:year/:month" element={<OwnerSalaryDetailPage />} />
+          <Route path="/owner/notifications" element={<OwnerNotificationsPage />} />
         </Route>
 
         {/* 루트 경로 - 역할에 따라 리다이렉트 */}

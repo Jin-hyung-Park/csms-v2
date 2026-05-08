@@ -3,6 +3,7 @@ const { authenticate, requireEmployee } = require('../middleware/auth');
 const User = require('../models/User');
 const Store = require('../models/Store');
 const WorkSchedule = require('../models/WorkSchedule');
+const MonthlySalary = require('../models/MonthlySalary');
 const {
   formatLocalDate,
   getDayOfWeek,
@@ -17,6 +18,13 @@ const {
   formatWeekLabel,
   formatMonthLabel,
 } = require('../utils/dateHelpers');
+const {
+  getWorkDaysString,
+  getWorkTimeString,
+  calculateWeeklyHours,
+  formatTaxType,
+  getDefaultWorkTime,
+} = require('../utils/userHelpers');
 
 const router = Router();
 
@@ -73,10 +81,16 @@ router.get('/dashboard', async (req, res) => {
     
     // 지난 달 급여 통계 (간단한 계산, 추후 MonthlySalary 모델과 연동)
     const lastMonthTotalHours = lastMonthSchedules.reduce((sum, s) => sum + (s.totalHours || 0), 0);
-    const hourlyWage = 10030; // 기본 시급, 추후 User 모델에서 가져올 예정
+    const hourlyWage = user.hourlyWage || 10030; // User 모델에서 시급 가져오기
     const lastMonthBasePay = Math.round(lastMonthTotalHours * hourlyWage);
     
     // TODO: 주휴수당 및 세금 계산은 추후 MonthlySalary 모델과 연동
+    
+    // User 모델에서 근무 스케줄 정보 가져오기
+    const workDays = getWorkDaysString(user.workSchedule);
+    const workTime = getWorkTimeString(user.workSchedule);
+    const weeklyHours = calculateWeeklyHours(user.workSchedule);
+    const taxType = formatTaxType(user.taxType);
     
     res.json({
       workInfo: {
@@ -84,11 +98,11 @@ router.get('/dashboard', async (req, res) => {
         storeName: store?.name || '점포 미할당',
         storeAddress: store?.address || '',
         contractInfo: {
-          workDays: '월, 수, 금', // TODO: User 모델에서 가져올 예정
-          workTime: '18:00 - 23:00', // TODO: User 모델에서 가져올 예정
-          weeklyHours: 20, // TODO: 계산
+          workDays,
+          workTime,
+          weeklyHours,
           hourlyWage,
-          taxType: '사업자소득 (3.3%)', // TODO: User 모델에서 가져올 예정
+          taxType,
         },
         link: '/employee/profile',
       },
@@ -162,20 +176,24 @@ router.get('/work-schedule/defaults', async (req, res) => {
       status: schedule.status === 'approved' ? '확정' : schedule.status === 'pending' ? '대기' : '거절',
     }));
 
-    // 기본값 설정
+    // 기본값 설정 (User 모델의 workSchedule에서 가져오기)
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const defaultWorkTime = getDefaultWorkTime(user.workSchedule, dayOfWeek);
+    
     const smartDefaults = {
       workDate: isoDate,
-      startTime: '18:00', // TODO: User 모델의 workSchedule에서 가져올 예정
-      endTime: '23:00', // TODO: User 모델의 workSchedule에서 가져올 예정
+      startTime: defaultWorkTime?.startTime || '09:00',
+      endTime: defaultWorkTime?.endTime || '18:00',
       storeId: primaryStore?._id?.toString() || null,
     };
 
     res.json({
       smartDefaults,
       contractSummary: {
-        workDays: '월, 수, 금', // TODO: User 모델에서 가져올 예정
-        workTime: '18:00 - 23:00', // TODO: User 모델에서 가져올 예정
-        weeklyHours: 20, // TODO: 계산
+        workDays: getWorkDaysString(user.workSchedule),
+        workTime: getWorkTimeString(user.workSchedule),
+        weeklyHours: calculateWeeklyHours(user.workSchedule),
         primaryStore: primaryStore ? {
           id: primaryStore._id.toString(),
           name: primaryStore.name,
@@ -229,7 +247,7 @@ router.get('/salary/summary', async (req, res) => {
       
       // 월별 통계 계산
       const totalHours = schedules.reduce((sum, s) => sum + (s.totalHours || 0), 0);
-      const hourlyWage = 10030; // 기본 시급, 추후 User 모델에서 가져올 예정
+      const hourlyWage = user.hourlyWage || 10030; // User 모델에서 시급 가져오기
       const basePay = Math.round(totalHours * hourlyWage);
       
       // 주차별 데이터 계산
@@ -298,13 +316,18 @@ router.get('/profile', async (req, res) => {
     // 이름의 첫 글자 (초성)
     const initials = user.name.length > 0 ? user.name.substring(0, 2) : '';
     
-    // 시급은 기본값 사용 (추후 User 모델에 필드 추가 예정)
-    const hourlyWage = 10030;
+    // User 모델에서 정보 가져오기
+    const hourlyWage = user.hourlyWage || 10030;
+    const position = user.position || '파트타이머';
+    const workDays = getWorkDaysString(user.workSchedule);
+    const workTime = getWorkTimeString(user.workSchedule);
+    const weeklyHours = calculateWeeklyHours(user.workSchedule);
+    const taxType = formatTaxType(user.taxType);
     
     res.json({
       name: user.name,
       initials,
-      position: '파트타이머', // TODO: User 모델에 필드 추가 예정
+      position,
       email: user.email,
       phone: user.phone || '',
       store: {
@@ -312,11 +335,11 @@ router.get('/profile', async (req, res) => {
         address: store?.address || '',
       },
       contract: {
-        workDays: '월, 수, 금', // TODO: User 모델에서 가져올 예정
-        workTime: '18:00 - 23:00', // TODO: User 모델에서 가져올 예정
-        weeklyHours: 20, // TODO: 계산
+        workDays,
+        workTime,
+        weeklyHours,
         hourlyWage,
-        taxType: '사업자소득(3.3%)', // TODO: User 모델에서 가져올 예정
+        taxType,
         status: user.isActive ? '계약 중' : '계약 종료',
       },
       notifications: [
@@ -432,7 +455,14 @@ router.get('/salary/:year/:month', async (req, res) => {
     // 해당 월의 시작일과 종료일
     const monthStart = getStartOfMonth(yearNum, monthNum);
     const monthEnd = getEndOfMonth(yearNum, monthNum);
-    
+
+    // MonthlySalary 레코드 조회 (확인 상태, 수정요청 포함)
+    const monthlySalary = await MonthlySalary.findOne({
+      userId: user._id,
+      year: yearNum,
+      month: monthNum,
+    }).lean();
+
     // 해당 월의 승인된 근무일정 조회
     const schedules = await WorkSchedule.find({
       userId: user._id,
@@ -447,7 +477,7 @@ router.get('/salary/:year/:month', async (req, res) => {
     
     // 월별 통계 계산
     const totalHours = schedules.reduce((sum, s) => sum + (s.totalHours || 0), 0);
-    const hourlyWage = 10030; // 기본 시급, 추후 User 모델에서 가져올 예정
+    const hourlyWage = user.hourlyWage || 10030; // User 모델에서 시급 가져오기
     const totalBasePay = Math.round(totalHours * hourlyWage);
     const totalHolidayPay = 0; // TODO: 주휴수당 계산
     const totalGrossPay = totalBasePay + totalHolidayPay;
@@ -498,8 +528,13 @@ router.get('/salary/:year/:month', async (req, res) => {
       year: yearNum,
       month: monthNum,
       monthLabel: formatMonthLabel(yearNum, monthNum),
-      isConfirmed: false, // TODO: MonthlySalary 모델에서 확인
-      confirmedAt: null, // TODO: MonthlySalary 모델에서 가져올 예정
+      salaryId: monthlySalary?._id || null,
+      salaryStatus: monthlySalary?.status || null,
+      isConfirmed: monthlySalary?.status === 'confirmed',
+      confirmedAt: monthlySalary?.confirmedAt || null,
+      employeeConfirmed: monthlySalary?.employeeConfirmed || false,
+      employeeConfirmedAt: monthlySalary?.employeeConfirmedAt || null,
+      correctionRequest: monthlySalary?.correctionRequest || null,
       monthlyTotal: {
         totalHours: Math.round(totalHours * 100) / 100,
         totalBasePay,

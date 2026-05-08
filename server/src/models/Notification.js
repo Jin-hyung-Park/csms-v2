@@ -14,7 +14,7 @@ const NotificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['schedule_approved', 'schedule_rejected', 'salary_confirmed', 'owner_message', 'employee_feedback'],
+      enum: ['schedule_approved', 'schedule_rejected', 'salary_confirmed', 'owner_message', 'employee_feedback', 'correction_request'],
       required: true,
       index: true,
     },

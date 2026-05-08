@@ -4,7 +4,9 @@ const User = require('../models/User');
 const Store = require('../models/Store');
 const WorkSchedule = require('../models/WorkSchedule');
 const MonthlySalary = require('../models/MonthlySalary');
+const Notification = require('../models/Notification');
 const { buildPayrollListExcel } = require('../utils/excelExporter');
+const { createNotification } = require('../utils/notificationHelper');
 const {
   getStartOfMonth,
   getEndOfMonth,
@@ -934,6 +936,113 @@ router.get('/export/payroll', async (req, res) => {
   } catch (error) {
     console.error('급여 Excel 다운로드 오류:', error);
     res.status(500).json({ message: 'Excel 다운로드 중 오류가 발생했습니다.', error: error.message });
+  }
+});
+
+/**
+ * GET /api/owner/notifications
+ * 점주가 받은 알림 목록 (근로자 수정 요청 등)
+ */
+router.get('/notifications', async (req, res) => {
+  try {
+    const owner = req.user;
+
+    const notifications = await Notification.find({ userId: owner._id })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .populate('createdBy', 'name')
+      .lean();
+
+    await Notification.updateMany(
+      { userId: owner._id, isRead: false },
+      { $set: { isRead: true } }
+    );
+
+    res.json({
+      items: notifications.map((n) => ({
+        id: n._id,
+        type: n.type,
+        title: n.title,
+        message: n.message,
+        isRead: n.isRead,
+        createdAt: n.createdAt,
+        createdByName: n.createdBy?.name || null,
+        relatedId: n.relatedId,
+        relatedType: n.relatedType,
+      })),
+    });
+  } catch (error) {
+    console.error('점주 알림 조회 오류:', error);
+    res.status(500).json({ message: '알림 조회 중 오류가 발생했습니다.', error: error.message });
+  }
+});
+
+/**
+ * GET /api/owner/notifications/sent
+ * 점주가 보낸 알림 목록 (읽음 여부 포함)
+ */
+router.get('/notifications/sent', async (req, res) => {
+  try {
+    const owner = req.user;
+
+    const notifications = await Notification.find({ createdBy: owner._id })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .populate('userId', 'name')
+      .lean();
+
+    res.json({
+      items: notifications.map((n) => ({
+        id: n._id,
+        type: n.type,
+        title: n.title,
+        message: n.message,
+        isRead: n.isRead,
+        createdAt: n.createdAt,
+        userName: n.userId?.name || null,
+      })),
+    });
+  } catch (error) {
+    console.error('보낸 알림 조회 오류:', error);
+    res.status(500).json({ message: '보낸 알림 조회 중 오류가 발생했습니다.', error: error.message });
+  }
+});
+
+/**
+ * POST /api/owner/notifications
+ * 점주가 근로자에게 알림 전송
+ */
+router.post('/notifications', async (req, res) => {
+  try {
+    const owner = req.user;
+    const { userId, title, message } = req.body;
+
+    if (!userId || !title?.trim() || !message?.trim()) {
+      return res.status(400).json({ message: '받는 사람, 제목, 내용을 모두 입력해 주세요.' });
+    }
+
+    const employee = await User.findById(userId).populate({ path: 'storeId', select: 'ownerId' });
+
+    if (!employee || employee.role !== 'employee') {
+      return res.status(404).json({ message: '직원을 찾을 수 없습니다.' });
+    }
+
+    if (!employee.storeId || employee.storeId.ownerId.toString() !== owner._id.toString()) {
+      return res.status(403).json({ message: '이 직원에게 알림을 보낼 권한이 없습니다.' });
+    }
+
+    await createNotification({
+      userId,
+      type: 'owner_message',
+      title: title.trim(),
+      message: message.trim(),
+      createdBy: owner._id,
+    });
+
+    res.json({ message: '알림이 전송되었습니다.' });
+  } catch (error) {
+    console.error('알림 전송 오류:', error);
+    res.status(500).json({ message: '알림 전송 중 오류가 발생했습니다.', error: error.message });
   }
 });
 

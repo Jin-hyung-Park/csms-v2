@@ -130,6 +130,27 @@
 
 ## 변경 이력
 
+### 2026-05-08 — 직원 급여 확인 / 수정 요청 기능 구현
+
+**배경:** 직원이 급여 내역을 검토한 후 이상 없음 확인 또는 수정 요청을 할 수 있는 기능이 설계되어 있었으나 미구현 상태였음.
+
+**수정 내용:**
+
+| 파일 | 변경 |
+|------|------|
+| `server/src/models/MonthlySalary.js` | `employeeConfirmed`, `employeeConfirmedAt`, `correctionRequest(message/requestedAt/status)` 필드 스키마 추가 |
+| `server/src/routes/monthlySalary.route.js` | `PUT /:id/confirm-employee` (직원 확인완료), `PUT /:id/correction-request` (수정 요청 + 점주 알림) 엔드포인트 추가. `findByIdAndUpdate`+`$set` 방식으로 기존 문서 유효성 검사 오류 방지 |
+| `server/src/routes/employee.route.js` | `GET /salary/:year/:month` 응답에 `salaryId`, `salaryStatus`, `employeeConfirmed`, `employeeConfirmedAt`, `correctionRequest` 추가 |
+| `client/src/pages/employee/SalaryDetail.jsx` | 급여 확인 섹션 UI 추가: 확인완료 버튼 / 수정 요청 버튼+텍스트 입력 / 상태별 표시(대기·확인완료·확정) |
+
+**흐름:**
+1. 점주가 급여 산정 → 직원이 확인 섹션에서 내용 검토
+2. 이상 없음: **확인완료** 버튼 클릭 → `employeeConfirmed: true`
+3. 이상 있음: **수정 요청** 버튼 → 메시지 작성 후 전송 → 점주에게 알림 발송
+4. 점주는 `employeeConfirmed: true` 상태일 때만 최종 확정 가능
+
+---
+
 ### 2026-05-08 — 직원 급여 월 선택 시 홈 리다이렉트 버그 수정
 
 **배경:** 직원 급여 메뉴에서 드롭다운으로 과거 월을 선택하면 급여 상세 페이지 대신 홈(대시보드)으로 이동하는 문제 발생.

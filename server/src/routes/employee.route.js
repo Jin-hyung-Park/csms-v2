@@ -3,6 +3,7 @@ const { authenticate, requireEmployee } = require('../middleware/auth');
 const User = require('../models/User');
 const Store = require('../models/Store');
 const WorkSchedule = require('../models/WorkSchedule');
+const MonthlySalary = require('../models/MonthlySalary');
 const {
   formatLocalDate,
   getDayOfWeek,
@@ -454,7 +455,14 @@ router.get('/salary/:year/:month', async (req, res) => {
     // 해당 월의 시작일과 종료일
     const monthStart = getStartOfMonth(yearNum, monthNum);
     const monthEnd = getEndOfMonth(yearNum, monthNum);
-    
+
+    // MonthlySalary 레코드 조회 (확인 상태, 수정요청 포함)
+    const monthlySalary = await MonthlySalary.findOne({
+      userId: user._id,
+      year: yearNum,
+      month: monthNum,
+    }).lean();
+
     // 해당 월의 승인된 근무일정 조회
     const schedules = await WorkSchedule.find({
       userId: user._id,
@@ -520,8 +528,13 @@ router.get('/salary/:year/:month', async (req, res) => {
       year: yearNum,
       month: monthNum,
       monthLabel: formatMonthLabel(yearNum, monthNum),
-      isConfirmed: false, // TODO: MonthlySalary 모델에서 확인
-      confirmedAt: null, // TODO: MonthlySalary 모델에서 가져올 예정
+      salaryId: monthlySalary?._id || null,
+      salaryStatus: monthlySalary?.status || null,
+      isConfirmed: monthlySalary?.status === 'confirmed',
+      confirmedAt: monthlySalary?.confirmedAt || null,
+      employeeConfirmed: monthlySalary?.employeeConfirmed || false,
+      employeeConfirmedAt: monthlySalary?.employeeConfirmedAt || null,
+      correctionRequest: monthlySalary?.correctionRequest || null,
       monthlyTotal: {
         totalHours: Math.round(totalHours * 100) / 100,
         totalBasePay,

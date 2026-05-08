@@ -537,6 +537,115 @@ router.put('/:id/confirm', async (req, res) => {
 });
 
 /**
+ * PUT /api/monthly-salary/:id/confirm-employee
+ * 근로자 급여 확인 완료
+ */
+router.put('/:id/confirm-employee', async (req, res) => {
+  try {
+    const employee = req.user;
+
+    if (employee.role !== 'employee') {
+      return res.status(403).json({ message: '근로자만 급여를 확인할 수 있습니다.' });
+    }
+
+    const salary = await MonthlySalary.findById(req.params.id).lean();
+
+    if (!salary) {
+      return res.status(404).json({ message: '급여 정보를 찾을 수 없습니다.' });
+    }
+
+    if (salary.userId.toString() !== employee._id.toString()) {
+      return res.status(403).json({ message: '본인의 급여만 확인할 수 있습니다.' });
+    }
+
+    if (salary.status === 'confirmed') {
+      return res.status(400).json({ message: '이미 확정된 급여입니다.' });
+    }
+
+    const updateSet = { employeeConfirmed: true, employeeConfirmedAt: new Date() };
+    if (salary.correctionRequest?.status === 'pending') {
+      updateSet['correctionRequest.status'] = 'resolved';
+    }
+
+    const updated = await MonthlySalary.findByIdAndUpdate(
+      req.params.id,
+      { $set: updateSet },
+      { new: true }
+    );
+
+    res.json({ message: '급여 확인이 완료되었습니다.', salary: updated });
+  } catch (error) {
+    console.error('근로자 급여 확인 오류:', error);
+    res.status(500).json({ message: '급여 확인 중 오류가 발생했습니다.', error: error.message });
+  }
+});
+
+/**
+ * PUT /api/monthly-salary/:id/correction-request
+ * 근로자 수정 요청
+ */
+router.put('/:id/correction-request', async (req, res) => {
+  try {
+    const employee = req.user;
+
+    if (employee.role !== 'employee') {
+      return res.status(403).json({ message: '근로자만 수정을 요청할 수 있습니다.' });
+    }
+
+    const { message } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ message: '수정 요청 내용을 입력해 주세요.' });
+    }
+
+    const salary = await MonthlySalary.findById(req.params.id).lean();
+
+    if (!salary) {
+      return res.status(404).json({ message: '급여 정보를 찾을 수 없습니다.' });
+    }
+
+    if (salary.userId.toString() !== employee._id.toString()) {
+      return res.status(403).json({ message: '본인의 급여만 수정 요청할 수 있습니다.' });
+    }
+
+    if (salary.status === 'confirmed') {
+      return res.status(400).json({ message: '이미 확정된 급여는 수정 요청할 수 없습니다.' });
+    }
+
+    await MonthlySalary.findByIdAndUpdate(
+      req.params.id,
+      {
+        $set: {
+          'correctionRequest.message': message.trim(),
+          'correctionRequest.requestedAt': new Date(),
+          'correctionRequest.status': 'pending',
+          employeeConfirmed: false,
+          employeeConfirmedAt: null,
+        },
+      }
+    );
+
+    const { createNotification } = require('../utils/notificationHelper');
+    const store = await require('../models/Store').findById(employee.storeId);
+    if (store) {
+      await createNotification({
+        userId: store.ownerId,
+        type: 'correction_request',
+        title: '급여 수정 요청',
+        message: `${employee.name}님이 ${salary.year}년 ${salary.month}월 급여 수정을 요청했습니다: "${message.trim().substring(0, 50)}${message.trim().length > 50 ? '...' : ''}"`,
+        relatedId: salary._id,
+        relatedType: 'MonthlySalary',
+      });
+    }
+
+    res.json({ message: '수정 요청이 전송되었습니다.', salary });
+  } catch (error) {
+    console.error('급여 수정 요청 오류:', error);
+    res.status(500).json({ message: '수정 요청 중 오류가 발생했습니다.', error: error.message });
+  }
+});
+
+/**
  * PUT /api/monthly-salary/:id/unconfirm-employee
  * 근로자 확인 완료 취소 (점주만) - 수정 사항 반영을 위해 근로자 확인 상태만 되돌림
  */

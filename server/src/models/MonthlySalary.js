@@ -220,6 +220,32 @@ const MonthlySalarySchema = new mongoose.Schema(
       default: 'draft',
       index: true,
     },
+    // 근로자 확인 정보
+    employeeConfirmed: {
+      type: Boolean,
+      default: false,
+    },
+    employeeConfirmedAt: {
+      type: Date,
+      default: null,
+    },
+    // 근로자 수정 요청
+    correctionRequest: {
+      message: {
+        type: String,
+        default: '',
+        maxlength: 1000,
+      },
+      requestedAt: {
+        type: Date,
+        default: null,
+      },
+      status: {
+        type: String,
+        enum: ['none', 'pending', 'resolved'],
+        default: 'none',
+      },
+    },
     // 확정 정보
     confirmedAt: {
       type: Date,

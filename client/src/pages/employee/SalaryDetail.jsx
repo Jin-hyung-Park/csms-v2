@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { apiClient } from '../../lib/apiClient';
 
@@ -20,10 +20,30 @@ export default function EmployeeSalaryDetailPage() {
   const { year, month } = useParams();
   const [searchParams] = useSearchParams();
   const focusedWeek = searchParams.get('week');
+  const queryClient = useQueryClient();
+
+  const [showCorrectionForm, setShowCorrectionForm] = useState(false);
+  const [correctionMessage, setCorrectionMessage] = useState('');
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['employee-salary-detail', year, month],
     queryFn: fetchSalaryDetail,
+  });
+
+  const confirmMutation = useMutation({
+    mutationFn: () => apiClient.put(`/monthly-salary/${data.salaryId}/confirm-employee`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['employee-salary-detail', year, month] }),
+    onError: (err) => alert(err?.response?.data?.message || '확인 처리 중 오류가 발생했습니다.'),
+  });
+
+  const correctionMutation = useMutation({
+    mutationFn: (message) => apiClient.put(`/monthly-salary/${data.salaryId}/correction-request`, { message }),
+    onSuccess: () => {
+      setShowCorrectionForm(false);
+      setCorrectionMessage('');
+      queryClient.invalidateQueries({ queryKey: ['employee-salary-detail', year, month] });
+    },
+    onError: (err) => alert(err?.response?.data?.message || '수정 요청 중 오류가 발생했습니다.'),
   });
 
   const selectedWeekNumber = useMemo(
@@ -77,6 +97,19 @@ export default function EmployeeSalaryDetailPage() {
           <DetailRow label="실수령액" value={currency.format(data.monthlyTotal.taxInfo.netPay)} highlight />
         </div>
       </section>
+
+      <SalaryConfirmSection
+        data={data}
+        showCorrectionForm={showCorrectionForm}
+        correctionMessage={correctionMessage}
+        onCorrectionMessageChange={setCorrectionMessage}
+        onConfirm={() => confirmMutation.mutate()}
+        onOpenCorrection={() => setShowCorrectionForm(true)}
+        onCancelCorrection={() => { setShowCorrectionForm(false); setCorrectionMessage(''); }}
+        onSubmitCorrection={() => correctionMutation.mutate(correctionMessage)}
+        isConfirming={confirmMutation.isPending}
+        isSubmittingCorrection={correctionMutation.isPending}
+      />
 
       {data.weeklyData.map((week) => (
         <WeekDetail key={week.weekNumber} week={week} focused={week.weekNumber === selectedWeekNumber} />
@@ -161,6 +194,116 @@ function Info({ label, value }) {
       <p>{label}</p>
       <p className="text-sm font-semibold text-slate-900">{value}</p>
     </div>
+  );
+}
+
+function SalaryConfirmSection({
+  data,
+  showCorrectionForm,
+  correctionMessage,
+  onCorrectionMessageChange,
+  onConfirm,
+  onOpenCorrection,
+  onCancelCorrection,
+  onSubmitCorrection,
+  isConfirming,
+  isSubmittingCorrection,
+}) {
+  const { salaryId, salaryStatus, isConfirmed, employeeConfirmed, employeeConfirmedAt, correctionRequest } = data;
+
+  if (!salaryId) {
+    return (
+      <section className="rounded-3xl border border-slate-100 bg-slate-50 p-5 text-center text-sm text-slate-400">
+        급여가 아직 산정되지 않았습니다.
+      </section>
+    );
+  }
+
+  if (isConfirmed) {
+    return (
+      <section className="rounded-3xl border border-emerald-100 bg-emerald-50 p-5 text-center">
+        <p className="text-sm font-semibold text-emerald-600">급여가 확정되었습니다.</p>
+        {employeeConfirmed && employeeConfirmedAt && (
+          <p className="mt-1 text-xs text-slate-400">
+            근로자 확인: {new Date(employeeConfirmedAt).toLocaleDateString('ko-KR')}
+          </p>
+        )}
+      </section>
+    );
+  }
+
+  if (employeeConfirmed) {
+    return (
+      <section className="rounded-3xl border border-brand-100 bg-brand-50 p-5 text-center">
+        <p className="text-sm font-semibold text-brand-600">확인 완료</p>
+        <p className="mt-1 text-xs text-slate-500">
+          {employeeConfirmedAt && new Date(employeeConfirmedAt).toLocaleDateString('ko-KR')} 확인하셨습니다. 점주 확정 대기 중입니다.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="rounded-3xl border border-white/60 bg-white/90 p-5 shadow-sm">
+      <header className="mb-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-brand-500">급여 확인</p>
+        <p className="mt-1 text-sm text-slate-500">급여 내역을 검토하고 이상 여부를 확인해 주세요.</p>
+      </header>
+
+      {correctionRequest?.status === 'pending' && (
+        <div className="mb-4 rounded-2xl border border-amber-100 bg-amber-50 p-4">
+          <p className="text-xs font-semibold text-amber-600">수정 요청 접수됨</p>
+          <p className="mt-1 text-sm text-slate-700">"{correctionRequest.message}"</p>
+          <p className="mt-1 text-xs text-slate-400">
+            {new Date(correctionRequest.requestedAt).toLocaleDateString('ko-KR')} 요청
+          </p>
+        </div>
+      )}
+
+      {!showCorrectionForm ? (
+        <div className="flex gap-3">
+          <button
+            onClick={onConfirm}
+            disabled={isConfirming}
+            className="flex-1 rounded-2xl bg-brand-500 py-3 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            {isConfirming ? '처리 중...' : '확인 완료'}
+          </button>
+          <button
+            onClick={onOpenCorrection}
+            className="flex-1 rounded-2xl border border-slate-200 py-3 text-sm font-semibold text-slate-600"
+          >
+            수정 요청
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <textarea
+            value={correctionMessage}
+            onChange={(e) => onCorrectionMessageChange(e.target.value)}
+            placeholder="수정이 필요한 내용을 구체적으로 작성해 주세요. (예: 5월 2일 근무시간이 잘못 기록되었습니다.)"
+            rows={4}
+            maxLength={1000}
+            className="w-full rounded-2xl border border-slate-200 p-4 text-sm text-slate-700 placeholder-slate-300 focus:border-brand-400 focus:outline-none"
+          />
+          <div className="flex gap-3">
+            <button
+              onClick={onSubmitCorrection}
+              disabled={isSubmittingCorrection || !correctionMessage.trim()}
+              className="flex-1 rounded-2xl bg-amber-500 py-3 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {isSubmittingCorrection ? '전송 중...' : '수정 요청 전송'}
+            </button>
+            <button
+              onClick={onCancelCorrection}
+              className="flex-1 rounded-2xl border border-slate-200 py-3 text-sm font-semibold text-slate-600"
+            >
+              취소
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 

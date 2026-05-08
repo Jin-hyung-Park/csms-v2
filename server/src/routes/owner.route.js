@@ -593,6 +593,38 @@ router.put('/employees/:id', async (req, res) => {
 });
 
 /**
+ * DELETE /api/owner/employees/:id
+ * 직원 퇴사 처리 (isActive: false)
+ */
+router.delete('/employees/:id', async (req, res) => {
+  try {
+    const owner = req.user;
+    const { id } = req.params;
+
+    const employee = await User.findById(id).populate({ path: 'storeId', select: 'ownerId' });
+
+    if (!employee) {
+      return res.status(404).json({ message: '직원을 찾을 수 없습니다.' });
+    }
+
+    if (employee.role !== 'employee') {
+      return res.status(400).json({ message: '직원 정보가 아닙니다.' });
+    }
+
+    if (employee.storeId && employee.storeId.ownerId.toString() !== owner._id.toString()) {
+      return res.status(403).json({ message: '이 직원의 정보를 수정할 권한이 없습니다.' });
+    }
+
+    await User.findByIdAndUpdate(id, { isActive: false });
+
+    res.json({ message: '퇴사 처리가 완료되었습니다.' });
+  } catch (error) {
+    console.error('직원 퇴사 처리 오류:', error);
+    res.status(500).json({ message: '퇴사 처리 중 오류가 발생했습니다.', error: error.message });
+  }
+});
+
+/**
  * GET /api/owner/stores
  * 점포 목록 조회
  */

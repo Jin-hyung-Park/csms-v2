@@ -48,7 +48,7 @@ const MonthlySalarySchema = new mongoose.Schema(
     },
     taxType: {
       type: String,
-      enum: ['none', 'under-15-hours', 'business-income', 'labor-income'],
+      enum: ['none', 'under-15-hours', 'business-income', 'labor-income', 'four-insurance'],
       required: true,
     },
     // 근로 통계 정보

@@ -22,6 +22,7 @@ const TAX_TYPE_LABEL = {
   'under-15-hours': '15시간 미만(비과세)',
   'business-income': '사업소득세(3.3%)',
   'labor-income': '근로소득세',
+  'four-insurance': '4대보험',
 };
 
 function buildPayrollListExcel(salaries, year, month) {

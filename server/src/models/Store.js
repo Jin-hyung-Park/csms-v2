@@ -36,6 +36,14 @@ const StoreSchema = new mongoose.Schema(
       trim: true,
       maxlength: 20,
     },
+    storeCode: {
+      type: String,
+      uppercase: true,
+      trim: true,
+      maxlength: 8,
+      sparse: true,
+      index: { unique: true, sparse: true },
+    },
     isActive: {
       type: Boolean,
       default: true, // 기본값: 활성

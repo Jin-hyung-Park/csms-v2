@@ -18,6 +18,7 @@ export default function RegisterPage() {
   } = useForm();
 
   const password = watch('password');
+  const role = watch('role', 'employee');
 
   // 이미 로그인되어 있으면 리다이렉트
   useEffect(() => {
@@ -37,6 +38,7 @@ export default function RegisterPage() {
         password: data.password,
         phone: data.phone || '',
         role: data.role || 'employee',
+        storeCode: data.storeCode || undefined,
       });
 
       // 회원가입 성공 후 자동 로그인
@@ -153,6 +155,24 @@ export default function RegisterPage() {
                 <option value="owner">점주</option>
               </select>
             </div>
+
+            {role !== 'owner' && (
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-slate-700">
+                  점포 코드 <span className="text-slate-400">(선택)</span>
+                </label>
+                <input
+                  type="text"
+                  {...register('storeCode')}
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 uppercase tracking-widest focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                  placeholder="점주에게 받은 6자리 코드"
+                  maxLength={8}
+                />
+                <p className="mt-1 text-xs text-slate-400">
+                  코드가 없어도 가입 후 점주에게 배정받을 수 있습니다.
+                </p>
+              </div>
+            )}
 
             <button
               type="submit"

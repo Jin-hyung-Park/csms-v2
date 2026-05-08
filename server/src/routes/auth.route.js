@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const User = require('../models/User');
+const Store = require('../models/Store');
 const { generateToken } = require('../utils/jwt');
 const { authenticate } = require('../middleware/auth');
 
@@ -11,7 +12,7 @@ const router = Router();
  */
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, phone, role, storeId } = req.body;
+    const { name, email, password, phone, role, storeCode } = req.body;
 
     // 필수 항목 검증
     if (!name || !email || !password) {
@@ -43,6 +44,19 @@ router.post('/register', async (req, res) => {
       });
     }
 
+    // 점포 코드로 점포 조회 (근로자 가입 시)
+    let storeId = null;
+    if (role !== 'owner' && storeCode) {
+      const store = await Store.findOne({
+        storeCode: storeCode.trim().toUpperCase(),
+        isActive: true,
+      });
+      if (!store) {
+        return res.status(400).json({ message: '존재하지 않는 점포 코드입니다.' });
+      }
+      storeId = store._id;
+    }
+
     // 사용자 생성
     const user = await User.create({
       name,
@@ -50,7 +64,7 @@ router.post('/register', async (req, res) => {
       password, // pre-save hook에서 자동 해싱
       phone: phone || '',
       role: role || 'employee',
-      storeId: storeId || null,
+      storeId,
     });
 
     // 비밀번호 제외한 사용자 정보

@@ -1,4 +1,5 @@
 const { Router } = require('express');
+const crypto = require('crypto');
 const { authenticate, requireOwner } = require('../middleware/auth');
 const User = require('../models/User');
 const Store = require('../models/Store');
@@ -18,6 +19,10 @@ const {
 const { getMonthlyWeeksForHolidayPay } = require('../utils/holidayPayCalculator');
 
 const router = Router();
+
+function generateStoreCode() {
+  return crypto.randomBytes(3).toString('hex').toUpperCase();
+}
 
 // 모든 Owner 라우트에 인증 적용
 router.use(authenticate);
@@ -344,16 +349,16 @@ router.get('/employees', async (req, res) => {
 
     const storeIds = stores.map((s) => s._id);
 
-    // 필터 구성
-    const filter = {
-      storeId: { $in: storeIds },
-      role: 'employee',
-      isActive: true,
-    };
-
-    // 점포 필터
+    // 필터 구성: 점포 필터 지정 시 해당 점포만, 아니면 소유 점포 직원 + 미배정 직원
+    let filter;
     if (storeId && storeIds.some((id) => id.toString() === storeId)) {
-      filter.storeId = storeId;
+      filter = { storeId, role: 'employee', isActive: true };
+    } else {
+      filter = {
+        $or: [{ storeId: { $in: storeIds } }, { storeId: null }],
+        role: 'employee',
+        isActive: true,
+      };
     }
 
     // 직원 조회
@@ -505,7 +510,7 @@ router.put('/employees/:id', async (req, res) => {
   try {
     const owner = req.user;
     const { id } = req.params;
-    const { hourlyWage, workSchedule, taxType, ssn, hiredAt, probationEndDate, position } = req.body;
+    const { hourlyWage, workSchedule, taxType, ssn, hiredAt, probationEndDate, position, storeId: newStoreId } = req.body;
 
     // 직원 조회
     const employee = await User.findById(id).populate({
@@ -526,7 +531,8 @@ router.put('/employees/:id', async (req, res) => {
       });
     }
 
-    if (!employee.storeId || employee.storeId.ownerId.toString() !== owner._id.toString()) {
+    // 기존 점포가 있으면 해당 점포의 점주인지 확인
+    if (employee.storeId && employee.storeId.ownerId.toString() !== owner._id.toString()) {
       return res.status(403).json({
         message: '이 직원의 정보를 수정할 권한이 없습니다.',
       });
@@ -534,17 +540,26 @@ router.put('/employees/:id', async (req, res) => {
 
     // 수정 가능한 필드 업데이트
     const updateData = {};
-    
+
+    // 점포 배정 (미배정 직원 → 점주 소유 점포로)
+    if (newStoreId !== undefined) {
+      const targetStore = await Store.findOne({ _id: newStoreId, ownerId: owner._id, isActive: true });
+      if (!targetStore) {
+        return res.status(403).json({ message: '해당 점포에 대한 권한이 없습니다.' });
+      }
+      updateData.storeId = newStoreId;
+    }
+
     if (hourlyWage !== undefined) {
       updateData.hourlyWage = hourlyWage;
     }
-    
+
     if (workSchedule !== undefined) {
       updateData.workSchedule = workSchedule;
     }
-    
+
     if (taxType !== undefined) {
-      const validTaxTypes = ['none', 'under-15-hours', 'business-income', 'labor-income'];
+      const validTaxTypes = ['none', 'under-15-hours', 'business-income', 'labor-income', 'four-insurance'];
       if (validTaxTypes.includes(taxType)) {
         updateData.taxType = taxType;
       } else {
@@ -593,7 +608,7 @@ router.get('/stores', async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    // 각 점포의 직원 수 추가
+    // 각 점포의 직원 수 추가 + storeCode 지연 생성
     const storesWithStats = await Promise.all(
       stores.map(async (store) => {
         const employeeCount = await User.countDocuments({
@@ -602,8 +617,15 @@ router.get('/stores', async (req, res) => {
           role: 'employee',
         });
 
+        let { storeCode } = store;
+        if (!storeCode) {
+          storeCode = generateStoreCode();
+          await Store.findByIdAndUpdate(store._id, { storeCode });
+        }
+
         return {
           ...store,
+          storeCode,
           employeeCount,
         };
       })
@@ -659,6 +681,7 @@ router.post('/stores', async (req, res) => {
       description: description || '',
       ownerId: owner._id,
       isActive: true,
+      storeCode: generateStoreCode(),
     });
 
     res.status(201).json({

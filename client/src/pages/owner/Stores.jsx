@@ -345,6 +345,14 @@ export default function OwnerStoresPage() {
                     </div>
                   </div>
                   <div className="space-y-1 text-sm text-slate-600">
+                    {store.storeCode && (
+                      <div className="mb-2 inline-flex items-center gap-2 rounded-xl bg-brand-50 px-3 py-1.5">
+                        <span className="text-xs font-semibold text-brand-600">직원 가입 코드</span>
+                        <span className="font-mono text-base font-bold tracking-widest text-brand-700">
+                          {store.storeCode}
+                        </span>
+                      </div>
+                    )}
                     {store.phone && (
                       <p>
                         <span className="font-semibold text-slate-900">전화번호:</span>{' '}

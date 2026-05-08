@@ -32,7 +32,10 @@ function buildPayrollListExcel(salaries, year, month) {
     '입사일',
     '근로계약상 주단위 근로시간',
     '세금유형',
+    '시급',
     '해당월 근무시간',
+    '기본급',
+    '주휴수당',
     '총급여',
     '실지급액',
   ];
@@ -58,7 +61,10 @@ function buildPayrollListExcel(salaries, year, month) {
       : 0;
     const taxType = s.userId?.taxType || s.taxType;
     const taxTypeLabel = TAX_TYPE_LABEL[taxType] || taxType || '-';
+    const hourlyWage = s.hourlyWage ?? 0;
     const monthlyHours = s.totalWorkHours ?? 0;
+    const totalBasePay = s.totalBasePay ?? 0;
+    const totalHolidayPay = s.totalHolidayPay ?? 0;
     const totalGrossPay = s.totalGrossPay ?? 0;
 
     rows.push([
@@ -68,7 +74,10 @@ function buildPayrollListExcel(salaries, year, month) {
       hiredAt,
       contractedWeeklyHours,
       taxTypeLabel,
+      hourlyWage,
       monthlyHours,
+      totalBasePay,
+      totalHolidayPay,
       totalGrossPay,
       totalGrossPay,
     ]);
@@ -82,6 +91,9 @@ function buildPayrollListExcel(salaries, year, month) {
     { wch: 12 },
     { wch: 18 },
     { wch: 18 },
+    { wch: 10 },
+    { wch: 12 },
+    { wch: 12 },
     { wch: 12 },
     { wch: 12 },
     { wch: 12 },

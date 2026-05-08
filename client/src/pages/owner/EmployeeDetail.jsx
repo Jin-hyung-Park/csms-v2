@@ -140,6 +140,8 @@ export default function OwnerEmployeeDetailPage() {
 
   const { employee, stats } = data;
   const isPending = employee.approvalStatus === 'pending';
+  const isRejected = employee.approvalStatus === 'rejected';
+  const needsApprovalAction = isPending || isRejected;
   const storeMinWage = employee.storeId?.minimumWage ?? DEFAULT_MIN_WAGE;
   const wage = hourlyWage !== '' ? Number(hourlyWage) : (employee.hourlyWage ?? storeMinWage);
   const tax = taxType || employee.taxType || 'none';
@@ -311,7 +313,7 @@ export default function OwnerEmployeeDetailPage() {
         </div>
 
         <div className="mt-6 flex flex-wrap gap-3">
-          {isPending ? (
+          {needsApprovalAction ? (
             <>
               <button
                 type="button"
@@ -324,7 +326,7 @@ export default function OwnerEmployeeDetailPage() {
               <button
                 type="button"
                 onClick={handleReject}
-                disabled={approveMutation.isPending}
+                disabled={approveMutation.isPending || isRejected}
                 className="touch-target flex-1 rounded-2xl bg-red-500 px-6 py-3 text-base font-semibold text-white transition hover:bg-red-600 disabled:opacity-50"
               >
                 거절처리

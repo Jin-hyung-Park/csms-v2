@@ -101,6 +101,12 @@ export default function OwnerEmployeesPage() {
   const assigned = items.filter((e) => e.storeId);
   const unassigned = items.filter((e) => !e.storeId);
 
+  const statusBadge = (approvalStatus) => {
+    if (approvalStatus === 'pending') return <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">승인 대기</span>;
+    if (approvalStatus === 'rejected') return <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">거절됨</span>;
+    return null;
+  };
+
   return (
     <div className="space-y-6">
       {assigningEmployee && (
@@ -153,16 +159,29 @@ export default function OwnerEmployeesPage() {
                     {employee.name.substring(0, 2)}
                   </div>
                   <div>
-                    <p className="font-semibold text-slate-900">{employee.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-slate-900">{employee.name}</p>
+                      {statusBadge(employee.approvalStatus)}
+                    </div>
                     <p className="text-xs text-slate-500">{employee.email}</p>
                   </div>
                 </div>
-                <button
-                  onClick={() => setAssigningEmployee(employee)}
-                  className="rounded-xl bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-600"
-                >
-                  점포 배정
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => navigate(`/owner/employees/${employee._id}`)}
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                  >
+                    상세
+                  </button>
+                  {employee.approvalStatus === 'approved' && (
+                    <button
+                      onClick={() => setAssigningEmployee(employee)}
+                      className="rounded-xl bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-600"
+                    >
+                      점포 배정
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -188,9 +207,12 @@ export default function OwnerEmployeesPage() {
                       {employee.name.substring(0, 2)}
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold text-slate-900">
-                        {employee.name}
-                      </h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-semibold text-slate-900">
+                          {employee.name}
+                        </h3>
+                        {statusBadge(employee.approvalStatus)}
+                      </div>
                       <p className="text-sm text-slate-500">{employee.email}</p>
                     </div>
                   </div>

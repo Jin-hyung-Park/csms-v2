@@ -42,7 +42,14 @@ const UserSchema = new mongoose.Schema(
     },
     isActive: {
       type: Boolean,
-      default: true, // 기본값: 활성
+      default: true,
+      index: true,
+    },
+    // 점주 가입 승인 상태 (근로자만 사용)
+    approvalStatus: {
+      type: String,
+      enum: ['pending', 'approved'],
+      default: 'pending',
       index: true,
     },
     // 시급 (근로자만 사용)

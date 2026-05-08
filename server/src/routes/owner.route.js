@@ -360,6 +360,11 @@ router.get('/employees', async (req, res) => {
         isActive: true,
       };
     }
+    // 승인 상태 필터 (기본: 전체, approved만 보려면 ?approval=approved)
+    const { approval } = req.query;
+    if (approval && ['pending', 'approved'].includes(approval)) {
+      filter.approvalStatus = approval;
+    }
 
     // 직원 조회
     const employees = await User.find(filter)
@@ -445,13 +450,7 @@ router.get('/employees/:id', async (req, res) => {
       });
     }
 
-    if (!employee.storeId) {
-      return res.status(400).json({
-        message: '직원이 점포에 할당되지 않았습니다.',
-      });
-    }
-
-    if (employee.storeId.ownerId.toString() !== owner._id.toString()) {
+    if (employee.storeId && employee.storeId.ownerId.toString() !== owner._id.toString()) {
       return res.status(403).json({
         message: '이 직원의 정보를 조회할 권한이 없습니다.',
       });
@@ -510,7 +509,7 @@ router.put('/employees/:id', async (req, res) => {
   try {
     const owner = req.user;
     const { id } = req.params;
-    const { hourlyWage, workSchedule, taxType, ssn, hiredAt, probationEndDate, position, storeId: newStoreId } = req.body;
+    const { hourlyWage, workSchedule, taxType, ssn, hiredAt, probationEndDate, position, storeId: newStoreId, approvalStatus } = req.body;
 
     // 직원 조회
     const employee = await User.findById(id).populate({
@@ -571,6 +570,7 @@ router.put('/employees/:id', async (req, res) => {
     if (hiredAt !== undefined) updateData.hiredAt = hiredAt ? new Date(hiredAt) : null;
     if (probationEndDate !== undefined) updateData.probationEndDate = probationEndDate ? new Date(probationEndDate) : null;
     if (position !== undefined) updateData.position = position.trim();
+    if (approvalStatus === 'approved') updateData.approvalStatus = 'approved';
 
     // User 정보 업데이트
     const updatedEmployee = await User.findByIdAndUpdate(

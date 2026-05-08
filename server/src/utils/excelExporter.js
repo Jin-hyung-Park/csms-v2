@@ -17,6 +17,13 @@ function formatKRW(num) {
  * @param {number} month
  * @returns {Buffer}
  */
+const TAX_TYPE_LABEL = {
+  'none': '비과세',
+  'under-15-hours': '15시간 미만(비과세)',
+  'business-income': '사업소득세(3.3%)',
+  'labor-income': '근로소득세',
+};
+
 function buildPayrollListExcel(salaries, year, month) {
   const headers = [
     '매장(점포명)',
@@ -24,6 +31,7 @@ function buildPayrollListExcel(salaries, year, month) {
     '주민번호',
     '입사일',
     '근로계약상 주단위 근로시간',
+    '세금유형',
     '해당월 근무시간',
     '총급여',
     '실지급액',
@@ -48,6 +56,8 @@ function buildPayrollListExcel(salaries, year, month) {
     const contractedWeeklyHours = (s.userId && s.userId.workSchedule)
       ? calculateWeeklyHours(s.userId.workSchedule)
       : 0;
+    const taxType = s.userId?.taxType || s.taxType;
+    const taxTypeLabel = TAX_TYPE_LABEL[taxType] || taxType || '-';
     const monthlyHours = s.totalWorkHours ?? 0;
     const totalGrossPay = s.totalGrossPay ?? 0;
 
@@ -57,6 +67,7 @@ function buildPayrollListExcel(salaries, year, month) {
       ssn,
       hiredAt,
       contractedWeeklyHours,
+      taxTypeLabel,
       monthlyHours,
       totalGrossPay,
       totalGrossPay,
@@ -69,6 +80,7 @@ function buildPayrollListExcel(salaries, year, month) {
     { wch: 10 },
     { wch: 16 },
     { wch: 12 },
+    { wch: 18 },
     { wch: 18 },
     { wch: 12 },
     { wch: 12 },

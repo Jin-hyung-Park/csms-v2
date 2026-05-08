@@ -3,6 +3,8 @@ const { authenticate, requireOwner } = require('../middleware/auth');
 const User = require('../models/User');
 const Store = require('../models/Store');
 const WorkSchedule = require('../models/WorkSchedule');
+const MonthlySalary = require('../models/MonthlySalary');
+const { buildPayrollListExcel } = require('../utils/excelExporter');
 const {
   getStartOfMonth,
   getEndOfMonth,
@@ -883,6 +885,53 @@ router.get('/salary-preview', async (req, res) => {
       message: '복지포인트 미리보기 조회 중 오류가 발생했습니다.',
       error: error.message,
     });
+  }
+});
+
+/**
+ * GET /api/owner/export/payroll
+ * 급여 목록 Excel 다운로드 (year, month, storeId 필터)
+ */
+router.get('/export/payroll', async (req, res) => {
+  try {
+    const owner = req.user;
+    const { year, month, storeId } = req.query;
+
+    const yearNum = parseInt(year, 10);
+    const monthNum = parseInt(month, 10);
+
+    if (!yearNum || !monthNum) {
+      return res.status(400).json({ message: 'year, month 파라미터가 필요합니다.' });
+    }
+
+    // 점주 소유 점포 확인
+    const ownedStores = await Store.find({ ownerId: owner._id }).select('_id').lean();
+    const ownedStoreIds = ownedStores.map((s) => s._id.toString());
+
+    if (storeId && !ownedStoreIds.includes(storeId)) {
+      return res.status(403).json({ message: '해당 점포에 대한 권한이 없습니다.' });
+    }
+
+    const query = {
+      storeId: storeId ? storeId : { $in: ownedStoreIds },
+      year: yearNum,
+      month: monthNum,
+    };
+
+    const salaries = await MonthlySalary.find(query)
+      .populate('userId', 'name ssn hiredAt workSchedule taxType')
+      .populate('storeId', 'name')
+      .lean();
+
+    const buffer = buildPayrollListExcel(salaries, yearNum, monthNum);
+
+    const filename = `급여목록_${yearNum}${String(monthNum).padStart(2, '0')}.xlsx`;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+    res.send(buffer);
+  } catch (error) {
+    console.error('급여 Excel 다운로드 오류:', error);
+    res.status(500).json({ message: 'Excel 다운로드 중 오류가 발생했습니다.', error: error.message });
   }
 });
 

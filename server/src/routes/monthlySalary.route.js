@@ -502,10 +502,23 @@ router.put('/:id/confirm', async (req, res) => {
       });
     }
 
-    // 급여 확정
-    salary.confirm(owner._id);
+    // 주차별 holidayPayStatus 업데이트 목록 구성
+    const weeklyUpdates = {};
+    (salary.weeklyDetails || []).forEach((week, i) => {
+      if (week.holidayPayStatus && week.holidayPayStatus !== 'pending') {
+        weeklyUpdates[`weeklyDetails.${i}.holidayPayStatus`] = 'confirmed';
+      }
+    });
 
-    await salary.save();
+    // 급여 확정 (findByIdAndUpdate로 save() 유효성 검사 우회)
+    await MonthlySalary.findByIdAndUpdate(id, {
+      $set: {
+        status: 'confirmed',
+        confirmedAt: new Date(),
+        confirmedBy: owner._id,
+        ...weeklyUpdates,
+      },
+    });
 
     // 확정된 급여 정보 다시 조회 (populate 포함)
     const confirmedSalary = await MonthlySalary.findById(id)

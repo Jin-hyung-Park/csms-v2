@@ -92,9 +92,7 @@ export default function EmployeeSalaryDetailPage() {
           <DetailRow label="총 근무시간" value={`${data.monthlyTotal.totalHours}시간`} />
           <DetailRow label="기본급" value={currency.format(data.monthlyTotal.totalBasePay)} />
           <DetailRow label="주휴수당" value={currency.format(data.monthlyTotal.totalHolidayPay)} />
-          <DetailRow label="총 지급액" value={currency.format(data.monthlyTotal.totalGrossPay)} />
-          <DetailRow label="세금" value={`-${currency.format(data.monthlyTotal.taxInfo.taxAmount)}`} />
-          <DetailRow label="실수령액" value={currency.format(data.monthlyTotal.taxInfo.netPay)} highlight />
+          <DetailRow label="총 지급액" value={currency.format(data.monthlyTotal.totalGrossPay)} highlight />
         </div>
       </section>
 

@@ -253,9 +253,9 @@ export default function OwnerSalaryDetailPage() {
           </p>
         </div>
         <div className="min-w-0 rounded-3xl border border-white/60 bg-white/90 p-5 shadow-sm backdrop-blur">
-          <p className="text-sm font-semibold text-slate-500">실수령액</p>
-          <p className="mt-2 truncate text-2xl font-bold text-brand-600 sm:text-3xl" title={currency.format(data.taxInfo?.netPay ?? 0)}>
-            {currency.format(data.taxInfo?.netPay ?? 0)}
+          <p className="text-sm font-semibold text-slate-500">총 지급액</p>
+          <p className="mt-2 truncate text-2xl font-bold text-brand-600 sm:text-3xl" title={currency.format(data.totalGrossPay ?? 0)}>
+            {currency.format(data.totalGrossPay ?? 0)}
           </p>
           <p className="mt-1 text-xs text-slate-400">(복지포인트 제외)</p>
         </div>
@@ -266,63 +266,6 @@ export default function OwnerSalaryDetailPage() {
           </p>
         </div>
       </div>
-
-      {/* 세금 정보 */}
-      {data.taxInfo && data.taxInfo.totalTax > 0 && (
-        <div className="rounded-3xl border border-white/60 bg-white/90 p-5 shadow-sm backdrop-blur">
-          <h2 className="mb-4 text-lg font-semibold text-slate-900">
-            {data.taxInfo.nationalPension != null ? '4대 보험·세금 정보' : '세금 정보'}
-          </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {data.taxInfo.nationalPension != null && (
-              <>
-                <div>
-                  <p className="text-sm text-slate-500">국민연금</p>
-                  <p className="text-lg font-semibold text-slate-900">
-                    {currency.format(data.taxInfo.nationalPension)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500">건강보험</p>
-                  <p className="text-lg font-semibold text-slate-900">
-                    {currency.format(data.taxInfo.healthInsurance)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500">장기요양보험</p>
-                  <p className="text-lg font-semibold text-slate-900">
-                    {currency.format(data.taxInfo.longTermCare)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500">고용보험</p>
-                  <p className="text-lg font-semibold text-slate-900">
-                    {currency.format(data.taxInfo.employmentInsurance)}
-                  </p>
-                </div>
-              </>
-            )}
-            <div>
-              <p className="text-sm text-slate-500">소득세</p>
-              <p className="text-lg font-semibold text-slate-900">
-                {currency.format(data.taxInfo.incomeTax)}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">지방세</p>
-              <p className="text-lg font-semibold text-slate-900">
-                {currency.format(data.taxInfo.localTax)}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">총 공제액</p>
-              <p className="text-lg font-semibold text-red-600">
-                {currency.format(data.taxInfo.totalTax)}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 주차별 상세 */}
       <div className="rounded-3xl border border-white/60 bg-white/90 p-5 shadow-sm backdrop-blur">

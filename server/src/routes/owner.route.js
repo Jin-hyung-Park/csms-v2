@@ -1,10 +1,13 @@
 const { Router } = require('express');
+const crypto = require('crypto');
 const { authenticate, requireOwner } = require('../middleware/auth');
 const User = require('../models/User');
 const Store = require('../models/Store');
 const WorkSchedule = require('../models/WorkSchedule');
 const MonthlySalary = require('../models/MonthlySalary');
+const Notification = require('../models/Notification');
 const { buildPayrollListExcel } = require('../utils/excelExporter');
+const { createNotification } = require('../utils/notificationHelper');
 const {
   getStartOfMonth,
   getEndOfMonth,
@@ -16,6 +19,10 @@ const {
 const { getMonthlyWeeksForHolidayPay } = require('../utils/holidayPayCalculator');
 
 const router = Router();
+
+function generateStoreCode() {
+  return crypto.randomBytes(3).toString('hex').toUpperCase();
+}
 
 // 모든 Owner 라우트에 인증 적용
 router.use(authenticate);
@@ -342,16 +349,21 @@ router.get('/employees', async (req, res) => {
 
     const storeIds = stores.map((s) => s._id);
 
-    // 필터 구성
-    const filter = {
-      storeId: { $in: storeIds },
-      role: 'employee',
-      isActive: true,
-    };
-
-    // 점포 필터
+    // 필터 구성: 점포 필터 지정 시 해당 점포만, 아니면 소유 점포 직원 + 미배정 직원
+    let filter;
     if (storeId && storeIds.some((id) => id.toString() === storeId)) {
-      filter.storeId = storeId;
+      filter = { storeId, role: 'employee', isActive: true };
+    } else {
+      filter = {
+        $or: [{ storeId: { $in: storeIds } }, { storeId: null }],
+        role: 'employee',
+        isActive: true,
+      };
+    }
+    // 승인 상태 필터 (기본: 전체, approved만 보려면 ?approval=approved)
+    const { approval } = req.query;
+    if (approval && ['pending', 'approved'].includes(approval)) {
+      filter.approvalStatus = approval;
     }
 
     // 직원 조회
@@ -438,13 +450,7 @@ router.get('/employees/:id', async (req, res) => {
       });
     }
 
-    if (!employee.storeId) {
-      return res.status(400).json({
-        message: '직원이 점포에 할당되지 않았습니다.',
-      });
-    }
-
-    if (employee.storeId.ownerId.toString() !== owner._id.toString()) {
+    if (employee.storeId && employee.storeId.ownerId.toString() !== owner._id.toString()) {
       return res.status(403).json({
         message: '이 직원의 정보를 조회할 권한이 없습니다.',
       });
@@ -503,7 +509,7 @@ router.put('/employees/:id', async (req, res) => {
   try {
     const owner = req.user;
     const { id } = req.params;
-    const { hourlyWage, workSchedule, taxType, ssn, hiredAt, probationEndDate, position } = req.body;
+    const { hourlyWage, workSchedule, taxType, ssn, hiredAt, probationEndDate, position, storeId: newStoreId, approvalStatus } = req.body;
 
     // 직원 조회
     const employee = await User.findById(id).populate({
@@ -524,7 +530,8 @@ router.put('/employees/:id', async (req, res) => {
       });
     }
 
-    if (!employee.storeId || employee.storeId.ownerId.toString() !== owner._id.toString()) {
+    // 기존 점포가 있으면 해당 점포의 점주인지 확인
+    if (employee.storeId && employee.storeId.ownerId.toString() !== owner._id.toString()) {
       return res.status(403).json({
         message: '이 직원의 정보를 수정할 권한이 없습니다.',
       });
@@ -532,17 +539,26 @@ router.put('/employees/:id', async (req, res) => {
 
     // 수정 가능한 필드 업데이트
     const updateData = {};
-    
+
+    // 점포 배정 (미배정 직원 → 점주 소유 점포로)
+    if (newStoreId !== undefined) {
+      const targetStore = await Store.findOne({ _id: newStoreId, ownerId: owner._id, isActive: true });
+      if (!targetStore) {
+        return res.status(403).json({ message: '해당 점포에 대한 권한이 없습니다.' });
+      }
+      updateData.storeId = newStoreId;
+    }
+
     if (hourlyWage !== undefined) {
       updateData.hourlyWage = hourlyWage;
     }
-    
+
     if (workSchedule !== undefined) {
       updateData.workSchedule = workSchedule;
     }
-    
+
     if (taxType !== undefined) {
-      const validTaxTypes = ['none', 'under-15-hours', 'business-income', 'labor-income'];
+      const validTaxTypes = ['none', 'under-15-hours', 'business-income', 'labor-income', 'four-insurance'];
       if (validTaxTypes.includes(taxType)) {
         updateData.taxType = taxType;
       } else {
@@ -554,6 +570,9 @@ router.put('/employees/:id', async (req, res) => {
     if (hiredAt !== undefined) updateData.hiredAt = hiredAt ? new Date(hiredAt) : null;
     if (probationEndDate !== undefined) updateData.probationEndDate = probationEndDate ? new Date(probationEndDate) : null;
     if (position !== undefined) updateData.position = position.trim();
+    if (approvalStatus === 'approved' || approvalStatus === 'rejected') {
+      updateData.approvalStatus = approvalStatus;
+    }
 
     // User 정보 업데이트
     const updatedEmployee = await User.findByIdAndUpdate(
@@ -576,6 +595,38 @@ router.put('/employees/:id', async (req, res) => {
 });
 
 /**
+ * DELETE /api/owner/employees/:id
+ * 직원 퇴사 처리 (isActive: false)
+ */
+router.delete('/employees/:id', async (req, res) => {
+  try {
+    const owner = req.user;
+    const { id } = req.params;
+
+    const employee = await User.findById(id).populate({ path: 'storeId', select: 'ownerId' });
+
+    if (!employee) {
+      return res.status(404).json({ message: '직원을 찾을 수 없습니다.' });
+    }
+
+    if (employee.role !== 'employee') {
+      return res.status(400).json({ message: '직원 정보가 아닙니다.' });
+    }
+
+    if (employee.storeId && employee.storeId.ownerId.toString() !== owner._id.toString()) {
+      return res.status(403).json({ message: '이 직원의 정보를 수정할 권한이 없습니다.' });
+    }
+
+    await User.findByIdAndUpdate(id, { isActive: false });
+
+    res.json({ message: '퇴사 처리가 완료되었습니다.' });
+  } catch (error) {
+    console.error('직원 퇴사 처리 오류:', error);
+    res.status(500).json({ message: '퇴사 처리 중 오류가 발생했습니다.', error: error.message });
+  }
+});
+
+/**
  * GET /api/owner/stores
  * 점포 목록 조회
  */
@@ -591,7 +642,7 @@ router.get('/stores', async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    // 각 점포의 직원 수 추가
+    // 각 점포의 직원 수 추가 + storeCode 지연 생성
     const storesWithStats = await Promise.all(
       stores.map(async (store) => {
         const employeeCount = await User.countDocuments({
@@ -600,8 +651,15 @@ router.get('/stores', async (req, res) => {
           role: 'employee',
         });
 
+        let { storeCode } = store;
+        if (!storeCode) {
+          storeCode = generateStoreCode();
+          await Store.findByIdAndUpdate(store._id, { storeCode });
+        }
+
         return {
           ...store,
+          storeCode,
           employeeCount,
         };
       })
@@ -657,6 +715,7 @@ router.post('/stores', async (req, res) => {
       description: description || '',
       ownerId: owner._id,
       isActive: true,
+      storeCode: generateStoreCode(),
     });
 
     res.status(201).json({
@@ -934,6 +993,113 @@ router.get('/export/payroll', async (req, res) => {
   } catch (error) {
     console.error('급여 Excel 다운로드 오류:', error);
     res.status(500).json({ message: 'Excel 다운로드 중 오류가 발생했습니다.', error: error.message });
+  }
+});
+
+/**
+ * GET /api/owner/notifications
+ * 점주가 받은 알림 목록 (근로자 수정 요청 등)
+ */
+router.get('/notifications', async (req, res) => {
+  try {
+    const owner = req.user;
+
+    const notifications = await Notification.find({ userId: owner._id })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .populate('createdBy', 'name')
+      .lean();
+
+    await Notification.updateMany(
+      { userId: owner._id, isRead: false },
+      { $set: { isRead: true } }
+    );
+
+    res.json({
+      items: notifications.map((n) => ({
+        id: n._id,
+        type: n.type,
+        title: n.title,
+        message: n.message,
+        isRead: n.isRead,
+        createdAt: n.createdAt,
+        createdByName: n.createdBy?.name || null,
+        relatedId: n.relatedId,
+        relatedType: n.relatedType,
+      })),
+    });
+  } catch (error) {
+    console.error('점주 알림 조회 오류:', error);
+    res.status(500).json({ message: '알림 조회 중 오류가 발생했습니다.', error: error.message });
+  }
+});
+
+/**
+ * GET /api/owner/notifications/sent
+ * 점주가 보낸 알림 목록 (읽음 여부 포함)
+ */
+router.get('/notifications/sent', async (req, res) => {
+  try {
+    const owner = req.user;
+
+    const notifications = await Notification.find({ createdBy: owner._id })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .populate('userId', 'name')
+      .lean();
+
+    res.json({
+      items: notifications.map((n) => ({
+        id: n._id,
+        type: n.type,
+        title: n.title,
+        message: n.message,
+        isRead: n.isRead,
+        createdAt: n.createdAt,
+        userName: n.userId?.name || null,
+      })),
+    });
+  } catch (error) {
+    console.error('보낸 알림 조회 오류:', error);
+    res.status(500).json({ message: '보낸 알림 조회 중 오류가 발생했습니다.', error: error.message });
+  }
+});
+
+/**
+ * POST /api/owner/notifications
+ * 점주가 근로자에게 알림 전송
+ */
+router.post('/notifications', async (req, res) => {
+  try {
+    const owner = req.user;
+    const { userId, title, message } = req.body;
+
+    if (!userId || !title?.trim() || !message?.trim()) {
+      return res.status(400).json({ message: '받는 사람, 제목, 내용을 모두 입력해 주세요.' });
+    }
+
+    const employee = await User.findById(userId).populate({ path: 'storeId', select: 'ownerId' });
+
+    if (!employee || employee.role !== 'employee') {
+      return res.status(404).json({ message: '직원을 찾을 수 없습니다.' });
+    }
+
+    if (!employee.storeId || employee.storeId.ownerId.toString() !== owner._id.toString()) {
+      return res.status(403).json({ message: '이 직원에게 알림을 보낼 권한이 없습니다.' });
+    }
+
+    await createNotification({
+      userId,
+      type: 'owner_message',
+      title: title.trim(),
+      message: message.trim(),
+      createdBy: owner._id,
+    });
+
+    res.json({ message: '알림이 전송되었습니다.' });
+  } catch (error) {
+    console.error('알림 전송 오류:', error);
+    res.status(500).json({ message: '알림 전송 중 오류가 발생했습니다.', error: error.message });
   }
 });
 

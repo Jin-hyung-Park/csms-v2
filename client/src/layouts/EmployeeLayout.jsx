@@ -34,6 +34,35 @@ export default function EmployeeLayout() {
     staleTime: 60 * 1000,
   });
 
+  const approvalStatus = user?.approvalStatus;
+  const isRejected = approvalStatus === 'rejected';
+  const isPendingApproval = !approvalStatus || approvalStatus === 'pending';
+
+  // 미승인 / 거절 상태: 제한 화면 표시
+  if (isRejected || isPendingApproval) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#f6f8ff] to-white px-4">
+        <div className="w-full max-w-sm rounded-3xl border border-white/60 bg-white/90 p-8 shadow-lg text-center">
+          <div className="text-4xl mb-4">{isRejected ? '❌' : '⏳'}</div>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">
+            {isRejected ? '가입이 거절되었습니다' : '승인 대기 중'}
+          </h2>
+          <p className="text-sm text-slate-500 mb-6">
+            {isRejected
+              ? '점주에게 문의하세요.'
+              : '점주가 가입을 승인하면 서비스를 이용할 수 있습니다.'}
+          </p>
+          <button
+            onClick={logout}
+            className="w-full rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-200"
+          >
+            로그아웃
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#f6f8ff] to-white">
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-24 pt-6">

@@ -42,7 +42,14 @@ const UserSchema = new mongoose.Schema(
     },
     isActive: {
       type: Boolean,
-      default: true, // 기본값: 활성
+      default: true,
+      index: true,
+    },
+    // 점주 가입 승인 상태 (근로자만 사용)
+    approvalStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'pending',
       index: true,
     },
     // 시급 (근로자만 사용)
@@ -54,7 +61,7 @@ const UserSchema = new mongoose.Schema(
     // 세금 신고 유형
     taxType: {
       type: String,
-      enum: ['none', 'under-15-hours', 'business-income', 'labor-income'],
+      enum: ['none', 'under-15-hours', 'business-income', 'labor-income', 'four-insurance'],
       default: 'none',
       // 'none': 미신고 (세금 면제)
       // 'under-15-hours': 주 15시간 미만

@@ -103,10 +103,16 @@ export default function OwnerEmployeeDetailPage() {
       const { data: res } = await apiClient.put(`/owner/employees/${id}`, body);
       return res;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries(['owner-employee', id]);
       queryClient.invalidateQueries(['owner-employees']);
-      alert('승인되었습니다.');
+      if (variables.approvalStatus === 'rejected') {
+        alert('가입이 거절되었습니다.');
+      } else if (variables.approvalStatus === 'approved') {
+        alert('승인되었습니다.');
+      } else {
+        alert('저장되었습니다.');
+      }
       navigate('/owner/employees');
     },
     onError: (err) => {
@@ -134,6 +140,8 @@ export default function OwnerEmployeeDetailPage() {
 
   const { employee, stats } = data;
   const isPending = employee.approvalStatus === 'pending';
+  const isRejected = employee.approvalStatus === 'rejected';
+  const needsApprovalAction = isPending || isRejected;
   const storeMinWage = employee.storeId?.minimumWage ?? DEFAULT_MIN_WAGE;
   const wage = hourlyWage !== '' ? Number(hourlyWage) : (employee.hourlyWage ?? storeMinWage);
   const tax = taxType || employee.taxType || 'none';
@@ -163,6 +171,12 @@ export default function OwnerEmployeeDetailPage() {
         hiredAt: hiredAt.trim() || null,
         probationEndDate: probationEndDate.trim() || null,
       });
+    }
+  };
+
+  const handleReject = () => {
+    if (window.confirm('이 직원의 가입을 거절하시겠습니까?')) {
+      approveMutation.mutate({ approvalStatus: 'rejected' });
     }
   };
 
@@ -299,23 +313,44 @@ export default function OwnerEmployeeDetailPage() {
         </div>
 
         <div className="mt-6 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={handleApprove}
-            disabled={approveMutation.isPending}
-            className={`touch-target flex-1 rounded-2xl px-6 py-3 text-base font-semibold text-white transition disabled:opacity-50 ${
-              isPending ? 'bg-emerald-500 active:bg-emerald-600 hover:bg-emerald-600' : 'bg-brand-500 active:bg-brand-600 hover:bg-brand-600'
-            }`}
-          >
-            {approveMutation.isPending ? '처리 중...' : isPending ? '가입 승인' : '저장'}
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/owner/employees')}
-            className="touch-target flex-1 rounded-2xl border border-slate-200 bg-white px-6 py-3 text-base font-semibold text-slate-700 active:bg-slate-50 hover:bg-slate-50"
-          >
-            취소
-          </button>
+          {needsApprovalAction ? (
+            <>
+              <button
+                type="button"
+                onClick={handleApprove}
+                disabled={approveMutation.isPending}
+                className="touch-target flex-1 rounded-2xl bg-emerald-500 px-6 py-3 text-base font-semibold text-white transition hover:bg-emerald-600 disabled:opacity-50"
+              >
+                {approveMutation.isPending ? '처리 중...' : '승인처리'}
+              </button>
+              <button
+                type="button"
+                onClick={handleReject}
+                disabled={approveMutation.isPending || isRejected}
+                className="touch-target flex-1 rounded-2xl bg-red-500 px-6 py-3 text-base font-semibold text-white transition hover:bg-red-600 disabled:opacity-50"
+              >
+                거절처리
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={handleApprove}
+                disabled={approveMutation.isPending}
+                className="touch-target flex-1 rounded-2xl bg-brand-500 px-6 py-3 text-base font-semibold text-white transition hover:bg-brand-600 disabled:opacity-50"
+              >
+                {approveMutation.isPending ? '처리 중...' : '저장'}
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/owner/employees')}
+                className="touch-target flex-1 rounded-2xl border border-slate-200 bg-white px-6 py-3 text-base font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                취소
+              </button>
+            </>
+          )}
         </div>
         {!isPending && (
           <div className="mt-4 border-t border-slate-100 pt-4">

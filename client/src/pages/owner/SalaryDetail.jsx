@@ -213,6 +213,25 @@ export default function OwnerSalaryDetailPage() {
         </div>
       </div>
 
+      {/* 수정 요청 알림 */}
+      {data.correctionRequest?.status === 'pending' && (
+        <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 text-lg">⚠️</span>
+            <div className="flex-1">
+              <p className="font-semibold text-amber-800">근로자 수정 요청</p>
+              <p className="mt-1 text-sm text-amber-700">"{data.correctionRequest.message}"</p>
+              <p className="mt-2 text-xs text-amber-500">
+                {new Date(data.correctionRequest.requestedAt).toLocaleString('ko-KR')} 요청
+              </p>
+              <p className="mt-2 text-xs text-slate-500">
+                내용 확인 후 주휴수당 수정 또는 근로자 확인 취소 후 재산정하세요.
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* 급여 요약: 총근무시간 / 기본급 / 주휴수당 / 실수령액(복지포인트 제외) / 복지포인트 */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <div className="min-w-0 rounded-3xl border border-white/60 bg-white/90 p-5 shadow-sm backdrop-blur">

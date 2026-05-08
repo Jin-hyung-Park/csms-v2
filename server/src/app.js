@@ -13,6 +13,9 @@ const monthlySalaryRouter = require('./routes/monthlySalary.route');
 
 const app = express();
 
+// EC2가 프록시(ALB/CloudFront) 뒤에 있으므로 X-Forwarded-For를 신뢰
+app.set('trust proxy', 1);
+
 const limiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 100,

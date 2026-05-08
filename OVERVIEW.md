@@ -1,7 +1,7 @@
 # CSMS v2 프로젝트 개요
 
 > 편의점 프랜차이즈 종합 근무 관리 시스템 (Convenience Store Management System v2)  
-> 최종 업데이트: 2026-05-02
+> 최종 업데이트: 2026-05-07
 
 ---
 
@@ -124,10 +124,67 @@
 | PUT | `/api/monthly-salary/:id` | 급여 수정 |
 | PUT | `/api/monthly-salary/:id/confirm` | 급여 확정 |
 | PUT | `/api/monthly-salary/:id/unconfirm-employee` | 직원 확인 취소 |
+| GET | `/api/owner/salary-preview` | 급여산정 전 복지포인트 미리보기 (`year`, `month`, `storeId` 필터) |
 
 ---
 
 ## 변경 이력
+
+### 2026-05-08 — 직원 급여 월 선택 시 홈 리다이렉트 버그 수정
+
+**배경:** 직원 급여 메뉴에서 드롭다운으로 과거 월을 선택하면 급여 상세 페이지 대신 홈(대시보드)으로 이동하는 문제 발생.
+
+**원인:**
+1. `window.location.href` 로 전체 페이지 새로고침 → React 재초기화 시 `isAuthenticated=false` → `EmployeeLayout`이 `/login`으로 튕김 → `Login.jsx`가 인증 감지 후 `/employee/dashboard`(홈)으로 리다이렉트하는 연쇄 문제
+2. `months` API 응답에 `id`, `monthLabel`만 포함되어 있어 `selected.year`/`selected.month`가 `undefined` → `/employee/salary/undefined/NaN` URL 생성으로 에러
+
+**수정 내용:**
+
+| 파일 | 변경 |
+|------|------|
+| `client/src/pages/employee/Salary.jsx` | 드롭다운 `onChange`를 `window.location.href` → React Router `navigate()` 로 교체. `e.target.value`(YYYY-MM 형식)를 직접 파싱하여 URL 생성. error 체크를 data 구조분해 이전으로 이동 |
+
+**브랜치:** `feature/user-model-extension`
+
+---
+
+### 2026-05-07 — 복지포인트 산정 로직 개선 및 독립 미리보기 API 구현
+
+**배경:** 월 경계 주차(예: 4/27~5/3)에서 복지포인트가 월별로 분할 산정되는 문제 수정 요청. 또한 배포 버전에 이미 설계되어 있던 급여산정 전 복지포인트 미리보기(`WelfarePreviewTable`) 기능의 서버 API가 미구현 상태였음.
+
+**수정 내용:**
+
+| 파일 | 변경 |
+|------|------|
+| `server/src/routes/monthlySalary.route.js` | 복지포인트를 월요일 기준 월에 귀속하여 전체 주 근무시간으로 산정. `getMonthlyWeeksForHolidayPay` import 경로 버그 수정 (`dateHelpers` → `holidayPayCalculator`) |
+| `server/src/routes/owner.route.js` | `GET /api/owner/salary-preview` 엔드포인트 신규 구현 |
+| `server/src/models/MonthlySalary.js` | `totalWelfarePoints`, `weeklyDetails.welfarePoints` 필드 스키마 추가. `holidayPayStatus` enum에 `not_eligible`, `pending_next_month` 추가 |
+| `client/src/pages/owner/Salary.jsx` | 산정 완료 후 주차별 복지포인트 표시를 클라이언트 계산 → 서버 계산값(`week.welfarePoints`) 사용으로 변경 |
+
+**복지포인트 산정 규칙:**
+- 공식: `Math.floor(주간 실 근로시간 / 4) × 1,700원`
+- 월 경계 주차: 해당 주의 **월요일이 속한 월**에 귀속, 전체 주(월~일) 근무시간 기준으로 산정
+- 월요일이 전월에 속하는 주(`startsInPrevMonth`)는 해당 월 산정에서 제외 (전월 포함)
+
+**salary-preview API 응답 구조:**
+```json
+{
+  "previewMap": {
+    "<employeeId>": {
+      "totalHours": 80,
+      "totalBasePay": 802560,
+      "totalWelfarePoints": 34000,
+      "weeklyDetails": [
+        { "weekNumber": 1, "range": "4/27(월) ~ 5/3(일)", "workHours": 20, "basePay": 200640, "welfarePoints": 8500 }
+      ]
+    }
+  }
+}
+```
+
+**브랜치:** `feature/user-model-extension` · 커밋 `4c2c00b`
+
+---
 
 ### 2026-05-02 — 프론트엔드 배포 형상 동기화
 

@@ -8,10 +8,8 @@ const currency = new Intl.NumberFormat('ko-KR', {
   maximumFractionDigits: 0,
 });
 
-const fetchSalarySummary = async (month) => {
-  const { data } = await apiClient.get('/employee/salary/summary', {
-    params: month ? { month } : {},
-  });
+const fetchSalarySummary = async () => {
+  const { data } = await apiClient.get('/employee/salary/summary');
   return data;
 };
 
@@ -19,7 +17,7 @@ export default function EmployeeSalaryPage() {
   const navigate = useNavigate();
   const { data, isLoading, error } = useQuery({
     queryKey: ['employee-salary-summary'],
-    queryFn: () => fetchSalarySummary(),
+    queryFn: fetchSalarySummary,
   });
 
   if (isLoading) {
@@ -30,8 +28,6 @@ export default function EmployeeSalaryPage() {
     );
   }
 
-  const { months, current } = data;
-
   if (error) {
     return (
       <section className="rounded-3xl border border-red-100 bg-red-50 p-6 text-center text-red-700">
@@ -39,6 +35,8 @@ export default function EmployeeSalaryPage() {
       </section>
     );
   }
+
+  const { months, current } = data;
 
   return (
     <div className="space-y-5 pb-8">
@@ -51,14 +49,10 @@ export default function EmployeeSalaryPage() {
             <select
               className="rounded-2xl border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700"
               value={current.id}
-              onChange={(e) =>
-                fetchSalarySummary(e.target.value).then((next) => {
-                  // React Query 없이 간단히 페이지 새로고침으로 처리할 수도 있지만,
-                  // 지금은 네비게이션으로 상세 페이지에서 처리하는 흐름이 더 자연스러워
-                  // 요약 화면에서는 선택만 바꾸고 상세로 들어가는 패턴을 유지합니다.
-                  window.location.href = `/employee/salary/${next.current.year}/${String(next.current.month).padStart(2, '0')}`;
-                })
-              }
+              onChange={(e) => {
+                const [y, m] = e.target.value.split('-');
+                navigate(`/employee/salary/${y}/${m}`);
+              }}
             >
               {months.map((m) => (
                 <option key={m.id} value={m.id}>

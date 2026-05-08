@@ -570,7 +570,9 @@ router.put('/employees/:id', async (req, res) => {
     if (hiredAt !== undefined) updateData.hiredAt = hiredAt ? new Date(hiredAt) : null;
     if (probationEndDate !== undefined) updateData.probationEndDate = probationEndDate ? new Date(probationEndDate) : null;
     if (position !== undefined) updateData.position = position.trim();
-    if (approvalStatus === 'approved') updateData.approvalStatus = 'approved';
+    if (approvalStatus === 'approved' || approvalStatus === 'rejected') {
+      updateData.approvalStatus = approvalStatus;
+    }
 
     // User 정보 업데이트
     const updatedEmployee = await User.findByIdAndUpdate(

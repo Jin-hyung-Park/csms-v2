@@ -48,7 +48,7 @@ const UserSchema = new mongoose.Schema(
     // 점주 가입 승인 상태 (근로자만 사용)
     approvalStatus: {
       type: String,
-      enum: ['pending', 'approved'],
+      enum: ['pending', 'approved', 'rejected'],
       default: 'pending',
       index: true,
     },

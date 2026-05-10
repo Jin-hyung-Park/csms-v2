@@ -2,16 +2,42 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { apiClient } from '../../lib/apiClient';
+import { useAuthStore } from '../../stores/authStore';
 
 const fetchScheduleDefaults = async () => {
   const { data } = await apiClient.get('/employee/work-schedule/defaults');
   return data;
 };
 
-const fetchScheduleList = async () => {
-  const { data } = await apiClient.get('/employee/work-schedule');
+const fetchScheduleList = async (month) => {
+  const { data } = await apiClient.get('/employee/work-schedule', { params: { month } });
   return data;
 };
+
+function toMonthId(date) {
+  const d = new Date(date);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function generateMonthOptions(hiredAt) {
+  const now = new Date();
+  const start = hiredAt
+    ? new Date(new Date(hiredAt).getFullYear(), new Date(hiredAt).getMonth(), 1)
+    : new Date(now.getFullYear() - 1, now.getMonth(), 1);
+  const end = new Date(now.getFullYear(), now.getMonth(), 1);
+  const months = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    const y = cursor.getFullYear();
+    const m = cursor.getMonth() + 1;
+    months.push({
+      id: `${y}-${String(m).padStart(2, '0')}`,
+      label: `${y}년 ${m}월`,
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+  return months.reverse();
+}
 
 const submitSchedule = async (payload) => {
   const { data } = await apiClient.post('/work-schedule', payload);
@@ -30,6 +56,12 @@ const deleteSchedule = async (id) => {
 
 export default function EmployeeSchedulePage() {
   const queryClient = useQueryClient();
+  const user = useAuthStore((s) => s.user);
+
+  const monthOptions = useMemo(() => generateMonthOptions(user?.hiredAt), [user?.hiredAt]);
+  const [selectedMonth, setSelectedMonth] = useState(() => toMonthId(new Date()));
+  const [selectedWeek, setSelectedWeek] = useState(null);
+
   const { data, isLoading } = useQuery({
     queryKey: ['schedule-defaults'],
     queryFn: fetchScheduleDefaults,
@@ -39,17 +71,9 @@ export default function EmployeeSchedulePage() {
     isLoading: listLoading,
     error: listError,
   } = useQuery({
-    queryKey: ['employee-work-schedules'],
-    queryFn: fetchScheduleList,
+    queryKey: ['employee-work-schedules', selectedMonth],
+    queryFn: () => fetchScheduleList(selectedMonth),
   });
-  const [selectedMonth, setSelectedMonth] = useState('');
-  const [selectedWeek, setSelectedWeek] = useState(null);
-
-  useEffect(() => {
-    if (weeklySchedules?.months?.length && !selectedMonth) {
-      setSelectedMonth(weeklySchedules.months[0].id);
-    }
-  }, [weeklySchedules, selectedMonth]);
 
   useEffect(() => {
     if (!weeklySchedules?.months?.length || !selectedMonth) return;
@@ -216,7 +240,7 @@ export default function EmployeeSchedulePage() {
             }}
             className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold"
           >
-            {weeklySchedules?.months?.map((month) => (
+            {monthOptions.map((month) => (
               <option key={month.id} value={month.id}>
                 {month.label}
               </option>

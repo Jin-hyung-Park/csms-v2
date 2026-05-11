@@ -178,11 +178,19 @@ function calculateHolidayPay(employee, weekSchedules) {
   
   // 주휴수당 계산
   const weeklyContractHours = eligibility.weeklyContractHours;
-  const hourlyWage = employee.hourlyWage || 10320; // 2026년 최저시급
-  
+
+  // 수습기간 여부: 해당 주의 가장 이른 근무일이 probationEndDate 이전이면 최저시급 적용
+  const MINIMUM_WAGE = 10320;
+  const probationEnd = employee.probationEndDate ? new Date(employee.probationEndDate) : null;
+  const weekEarliestDate = weekSchedules.length > 0
+    ? new Date(Math.min(...weekSchedules.map((s) => new Date(s.workDate).getTime())))
+    : null;
+  const isInProbation = probationEnd && weekEarliestDate && weekEarliestDate < probationEnd;
+  const hourlyWage = isInProbation ? MINIMUM_WAGE : (employee.hourlyWage || MINIMUM_WAGE);
+
   // 공식: (주간 근로계약 시간 / 40) × 8 × 시급
   const holidayPay = Math.floor((weeklyContractHours / 40) * 8 * hourlyWage);
-  
+
   return {
     amount: holidayPay,
     isEligible: true,

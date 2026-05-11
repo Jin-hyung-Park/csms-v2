@@ -276,7 +276,16 @@ router.post('/calculate', async (req, res) => {
       const welfarePoints = weekInfo.startsInPrevMonth
         ? 0
         : Math.floor(fullWeekHours / 4) * WELFARE_POINT_UNIT;
-      const weekBasePay = Math.round(weekHours * (employee.hourlyWage ?? employee.storeId?.minimumWage ?? 10320));
+
+      // 기본급: 근무일별로 수습기간 여부를 판단해 시급 차등 적용
+      const MINIMUM_WAGE = 10320;
+      const contractWage = employee.hourlyWage ?? employee.storeId?.minimumWage ?? MINIMUM_WAGE;
+      const probationEnd = employee.probationEndDate ? new Date(employee.probationEndDate) : null;
+      const weekBasePay = monthSchedules.reduce((sum, schedule) => {
+        const isProbation = probationEnd && new Date(schedule.workDate) < probationEnd;
+        const wage = isProbation ? MINIMUM_WAGE : contractWage;
+        return sum + Math.round((schedule.totalHours || 0) * wage);
+      }, 0);
       
       // 주휴수당 계산 (이 주차를 현재 월에 산정해야 하는 경우에만)
       let weekHolidayPay = 0;

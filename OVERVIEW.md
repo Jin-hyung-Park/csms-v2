@@ -1,7 +1,7 @@
 # CSMS v2 프로젝트 개요
 
 > 편의점 프랜차이즈 종합 근무 관리 시스템 (Convenience Store Management System v2)  
-> 최종 업데이트: 2026-05-07
+> 최종 업데이트: 2026-06-01
 
 ---
 
@@ -129,6 +129,25 @@
 ---
 
 ## 변경 이력
+
+### 2026-06-01 — 근무 일정 중복 등록 방지
+
+**배경:** 근로자가 동일 날짜에 시간이 겹치는 근무 일정을 중복으로 등록할 수 있는 문제 발견. 서버·DB·클라이언트 3계층 모두 검증 로직 부재 상태였음.
+
+**수정 내용:**
+
+| 파일 | 변경 |
+|------|------|
+| `server/src/routes/workSchedule.route.js` | `POST /api/work-schedule`: 저장 전 동일 사용자·날짜 기준 시간 겹침 조회 → 충돌 시 409 반환. `PUT /api/work-schedule/:id`: 수정 저장 전 자신을 제외한 다른 일정과의 겹침 검증 추가. 거절된 일정은 검증 제외 |
+| `client/src/pages/employee/Schedule.jsx` | 등록 폼에 `watch`로 날짜·시작·종료 시간 실시간 감지 → 현재 월 데이터에서 겹치는 일정 탐색 후 노란 경고박스 표시. `mutation.isLoading` → `mutation.isPending` 수정 (TanStack Query v5 대응, 중복 제출 방지). 저장 성공/실패 메시지 색상 분리. 수정 모달에 서버 에러 메시지 표시 추가 |
+| `scripts/deploy.sh` | `REACT_APP_API_URL` 인라인 주입 제거. 빌드 실패 시 `|| true`로 오류가 가려지던 문제 수정 → 빌드 실패 시 즉시 스크립트 중단 |
+
+**겹침 판정 조건:**
+- 거절(`rejected`) 상태 일정은 제외
+- `startTime < 신규EndTime AND endTime > 신규StartTime` 을 만족하면 충돌
+- 날짜 비교는 UTC 자정 기준 범위 쿼리(`$gte dateStart, $lt dateEnd`)로 처리
+
+---
 
 ### 2026-05-08 — 직원 급여 확인 / 수정 요청 기능 구현
 

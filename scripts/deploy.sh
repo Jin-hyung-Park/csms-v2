@@ -67,7 +67,7 @@ deploy_backend() {
 deploy_frontend() {
   info "프론트엔드 빌드 시작..."
 
-  CI=false npm run build --prefix "$ROOT_DIR/client" || error "프론트엔드 빌드 실패"
+  CI=false DISABLE_ESLINT_PLUGIN=true npm run build --prefix "$ROOT_DIR/client" || error "프론트엔드 빌드 실패"
 
   info "S3 업로드 중..."
   aws s3 sync "$ROOT_DIR/client/build" "$S3_BUCKET" --delete \

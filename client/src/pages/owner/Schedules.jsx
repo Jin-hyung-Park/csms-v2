@@ -61,11 +61,12 @@ export default function OwnerSchedulesPage() {
     },
   });
 
-  // 직원 목록
+  // 직원 목록 (점포 필터 연동)
   const { data: employeesData } = useQuery({
-    queryKey: ['owner-employees'],
+    queryKey: ['owner-employees', storeFilter],
     queryFn: async () => {
-      const { data } = await apiClient.get('/owner/employees');
+      const params = storeFilter ? `?storeId=${storeFilter}` : '';
+      const { data } = await apiClient.get(`/owner/employees${params}`);
       return data;
     },
   });

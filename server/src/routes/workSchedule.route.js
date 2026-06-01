@@ -41,9 +41,25 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    // 근로자는 자신의 ID만 사용, 점주는 payload의 userId 사용 가능
     const scheduleUserId = req.user.role === 'employee' ? req.user._id : (payload.userId || req.user._id);
-    
+
+    const dateStart = new Date(payload.workDate);
+    const dateEnd = new Date(dateStart);
+    dateEnd.setDate(dateEnd.getDate() + 1);
+
+    const conflict = await WorkSchedule.findOne({
+      userId: scheduleUserId,
+      workDate: { $gte: dateStart, $lt: dateEnd },
+      status: { $ne: 'rejected' },
+      startTime: { $lt: payload.endTime },
+      endTime: { $gt: payload.startTime },
+    });
+    if (conflict) {
+      return res.status(409).json({
+        message: `해당 날짜에 겹치는 근무 일정이 있습니다. (${conflict.startTime}~${conflict.endTime})`,
+      });
+    }
+
     const schedule = await WorkSchedule.create({
       userId: scheduleUserId,
       storeId: payload.storeId || req.user.storeId,
@@ -80,6 +96,25 @@ router.put('/:id', async (req, res) => {
     if (!payload.startTime || !payload.endTime) {
       return res.status(400).json({ message: 'startTime/endTime이 필요합니다.' });
     }
+
+    const dateStart = new Date(current.workDate);
+    const dateEnd = new Date(dateStart);
+    dateEnd.setDate(dateEnd.getDate() + 1);
+
+    const conflict = await WorkSchedule.findOne({
+      _id: { $ne: id },
+      userId: current.userId,
+      workDate: { $gte: dateStart, $lt: dateEnd },
+      status: { $ne: 'rejected' },
+      startTime: { $lt: payload.endTime },
+      endTime: { $gt: payload.startTime },
+    });
+    if (conflict) {
+      return res.status(409).json({
+        message: `해당 날짜에 겹치는 근무 일정이 있습니다. (${conflict.startTime}~${conflict.endTime})`,
+      });
+    }
+
     const updated = await WorkSchedule.findByIdAndUpdate(
       id,
       {

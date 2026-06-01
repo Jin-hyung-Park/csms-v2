@@ -67,7 +67,7 @@ deploy_backend() {
 deploy_frontend() {
   info "프론트엔드 빌드 시작..."
 
-  CI=false REACT_APP_API_URL=http://${EC2_HOST} npm run build --prefix "$ROOT_DIR/client" 2>&1 | grep -E "Compiled|warning|error|File sizes" || true
+  CI=false npm run build --prefix "$ROOT_DIR/client" || error "프론트엔드 빌드 실패"
 
   info "S3 업로드 중..."
   aws s3 sync "$ROOT_DIR/client/build" "$S3_BUCKET" --delete \

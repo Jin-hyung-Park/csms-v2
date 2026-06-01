@@ -100,6 +100,7 @@ export default function EmployeeSchedulePage() {
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { isSubmitting },
   } = useForm({
     defaultValues: {
@@ -123,14 +124,35 @@ export default function EmployeeSchedulePage() {
     }
   }, [data, reset]);
 
+  const watchedDate = watch('workDate');
+  const watchedStart = watch('startTime');
+  const watchedEnd = watch('endTime');
+
+  const conflictingSchedule = useMemo(() => {
+    if (!watchedDate || !watchedStart || !watchedEnd || !weeklySchedules) return null;
+    const allItems = weeklySchedules.months?.flatMap(
+      (m) => m.weeks?.flatMap((w) => w.items ?? []) ?? []
+    ) ?? [];
+    return (
+      allItems.find(
+        (item) =>
+          item.date === watchedDate &&
+          item.status !== 'rejected' &&
+          item.startTime < watchedEnd &&
+          item.endTime > watchedStart
+      ) ?? null
+    );
+  }, [watchedDate, watchedStart, watchedEnd, weeklySchedules]);
+
   const mutation = useMutation({
     mutationFn: submitSchedule,
     onSuccess: () => {
-      setStatusMessage('근무 일정이 저장되었어요.');
+      setStatusMessage({ type: 'success', text: '근무 일정이 저장되었어요.' });
       queryClient.invalidateQueries({ queryKey: ['employee-work-schedules'] });
     },
-    onError: () => {
-      setStatusMessage('저장 중 오류가 발생했습니다. 다시 시도해주세요.');
+    onError: (error) => {
+      const msg = error.response?.data?.message || '저장 중 오류가 발생했습니다. 다시 시도해주세요.';
+      setStatusMessage({ type: 'error', text: msg });
     },
   });
 
@@ -138,6 +160,9 @@ export default function EmployeeSchedulePage() {
     setStatusMessage(null);
     mutation.mutate(values);
   };
+
+  const statusColor =
+    statusMessage?.type === 'error' ? 'text-red-600' : 'text-brand-600';
 
   if (isLoading || !data) {
     return (
@@ -200,6 +225,22 @@ export default function EmployeeSchedulePage() {
             </Field>
           </div>
 
+          {conflictingSchedule && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+              이미 등록된 근무와 시간이 겹칩니다.{' '}
+              <span className="font-semibold">
+                {conflictingSchedule.startTime}~{conflictingSchedule.endTime}
+              </span>{' '}
+              (
+              {conflictingSchedule.status === 'approved'
+                ? '승인'
+                : conflictingSchedule.status === 'pending'
+                  ? '대기'
+                  : conflictingSchedule.status}
+              )
+            </div>
+          )}
+
           <Field label="메모 (선택)">
             <textarea
               rows={3}
@@ -211,15 +252,15 @@ export default function EmployeeSchedulePage() {
 
           <button
             type="submit"
-            disabled={isSubmitting || mutation.isLoading}
+            disabled={isSubmitting || mutation.isPending}
             className="w-full rounded-2xl bg-brand-500 py-3 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:bg-slate-200"
           >
-            {mutation.isLoading ? '저장 중...' : '근무 일정 저장'}
+            {mutation.isPending ? '저장 중...' : '근무 일정 저장'}
           </button>
         </form>
 
         {statusMessage && (
-          <p className="mt-4 text-center text-sm text-brand-600">{statusMessage}</p>
+          <p className={`mt-4 text-center text-sm ${statusColor}`}>{statusMessage.text}</p>
         )}
       </section>
 
@@ -344,10 +385,12 @@ function EditScheduleButton({ schedule, onUpdated, context }) {
   const [start, setStart] = useState(schedule.startTime);
   const [end, setEnd] = useState(schedule.endTime);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   const save = async () => {
     try {
       setSaving(true);
+      setSaveError(null);
       await updateSchedule({ id: schedule.id, startTime: start, endTime: end });
       // Optimistic cache update (목업 데이터이므로 서버 반영이 없어도 UI 반영)
       queryClient.setQueryData(['employee-work-schedules'], (prev) => {
@@ -365,6 +408,8 @@ function EditScheduleButton({ schedule, onUpdated, context }) {
       });
       setOpen(false);
       onUpdated?.();
+    } catch (e) {
+      setSaveError(e.response?.data?.message || '저장 중 오류가 발생했습니다.');
     } finally {
       setSaving(false);
     }
@@ -399,6 +444,9 @@ function EditScheduleButton({ schedule, onUpdated, context }) {
                 className="w-full rounded-2xl border border-slate-200 px-4 py-3"
               />
             </div>
+            {saveError && (
+              <p className="mt-3 text-sm text-red-600">{saveError}</p>
+            )}
             <div className="mt-4 flex gap-2">
               <button
                 onClick={() => setOpen(false)}

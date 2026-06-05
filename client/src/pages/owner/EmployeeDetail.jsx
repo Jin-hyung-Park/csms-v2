@@ -56,11 +56,20 @@ export default function OwnerEmployeeDetailPage() {
   const [ssn, setSsn] = useState('');
   const [hiredAt, setHiredAt] = useState('');
   const [probationEndDate, setProbationEndDate] = useState('');
+  const [storeId, setStoreId] = useState('');
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['owner-employee', id],
     queryFn: async () => {
       const { data: res } = await apiClient.get(`/owner/employees/${id}`);
+      return res;
+    },
+  });
+
+  const { data: storesData } = useQuery({
+    queryKey: ['owner-stores'],
+    queryFn: async () => {
+      const { data: res } = await apiClient.get('/owner/stores');
       return res;
     },
   });
@@ -80,6 +89,7 @@ export default function OwnerEmployeeDetailPage() {
       setHiredAt(h ? (typeof h === 'string' ? h.slice(0, 10) : new Date(h).toISOString().slice(0, 10)) : '');
       const p = data.employee.probationEndDate;
       setProbationEndDate(p ? (typeof p === 'string' ? p.slice(0, 10) : new Date(p).toISOString().slice(0, 10)) : '');
+      setStoreId(data.employee.storeId?._id ?? '');
     }
   }, [data?.employee]);
 
@@ -161,6 +171,10 @@ export default function OwnerEmployeeDetailPage() {
       alert('시급을 올바르게 입력해 주세요.');
       return;
     }
+    if (!storeId) {
+      alert('소속 점포를 선택해 주세요.');
+      return;
+    }
     if (window.confirm(isPending ? '이 직원의 가입을 승인하시겠습니까?' : '저장하시겠습니까?')) {
       approveMutation.mutate({
         approvalStatus: isPending ? 'approved' : undefined,
@@ -170,6 +184,7 @@ export default function OwnerEmployeeDetailPage() {
         ssn: ssn.trim(),
         hiredAt: hiredAt.trim() || null,
         probationEndDate: probationEndDate.trim() || null,
+        storeId,
       });
     }
   };
@@ -213,6 +228,21 @@ export default function OwnerEmployeeDetailPage() {
       <div className="rounded-3xl border border-white/60 bg-white/90 p-5 shadow-sm backdrop-blur">
         <h2 className="mb-4 text-lg font-semibold text-slate-900">근로 정보</h2>
         <div className="space-y-4">
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-slate-700">소속 점포</label>
+            <select
+              value={storeId}
+              onChange={(e) => setStoreId(e.target.value)}
+              className="input-touch w-full rounded-2xl border border-slate-200 px-4 py-3 focus:border-brand-500 focus:outline-none"
+            >
+              <option value="">점포 선택</option>
+              {(storesData?.items ?? []).map((store) => (
+                <option key={store._id} value={store._id}>
+                  {store.name}
+                </option>
+              ))}
+            </select>
+          </div>
           <div>
             <label className="mb-1 block text-sm font-semibold text-slate-700">시급 (원)</label>
             <input

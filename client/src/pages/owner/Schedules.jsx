@@ -34,6 +34,9 @@ export default function OwnerSchedulesPage() {
 
   const [rejectionReason, setRejectionReason] = useState('');
   const [rejectingId, setRejectingId] = useState(null);
+
+  const [editingSchedule, setEditingSchedule] = useState(null); // { _id, startTime, endTime, notes }
+  const [editForm, setEditForm] = useState({ startTime: '', endTime: '', notes: '' });
   const queryClient = useQueryClient();
 
   const monthParam = year && month ? `${year}-${String(month).padStart(2, '0')}` : '';
@@ -83,6 +86,18 @@ export default function OwnerSchedulesPage() {
     },
   });
 
+  // 수정
+  const editMutation = useMutation({
+    mutationFn: async ({ scheduleId, startTime, endTime, notes }) => {
+      const { data } = await apiClient.put(`/work-schedule/${scheduleId}`, { startTime, endTime, notes });
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['owner-schedules']);
+      setEditingSchedule(null);
+    },
+  });
+
   // 거절
   const rejectMutation = useMutation({
     mutationFn: async ({ scheduleId, reason }) => {
@@ -98,6 +113,21 @@ export default function OwnerSchedulesPage() {
       setRejectionReason('');
     },
   });
+
+  const handleEditOpen = (schedule) => {
+    setEditingSchedule(schedule);
+    setEditForm({ startTime: schedule.startTime, endTime: schedule.endTime, notes: schedule.notes || '' });
+  };
+
+  const handleEditSubmit = () => {
+    if (!editForm.startTime || !editForm.endTime) return;
+    editMutation.mutate({
+      scheduleId: editingSchedule._id,
+      startTime: editForm.startTime,
+      endTime: editForm.endTime,
+      notes: editForm.notes,
+    });
+  };
 
   const handleApprove = (scheduleId) => {
     if (window.confirm('이 근무일정을 승인하시겠습니까?')) {
@@ -340,23 +370,33 @@ export default function OwnerSchedulesPage() {
                           )}
                         </div>
                       </div>
-                      {schedule.status === 'pending' && (
-                        <div className="ml-4 flex flex-col gap-2">
+                      <div className="ml-4 flex flex-col gap-2">
+                        {schedule.status === 'pending' && (
+                          <>
+                            <button
+                              onClick={() => handleApprove(schedule._id)}
+                              disabled={approveMutation.isPending}
+                              className="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:opacity-50"
+                            >
+                              승인
+                            </button>
+                            <button
+                              onClick={() => setRejectingId(schedule._id)}
+                              className="rounded-2xl bg-red-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-600"
+                            >
+                              거절
+                            </button>
+                          </>
+                        )}
+                        {schedule.status === 'approved' && (
                           <button
-                            onClick={() => handleApprove(schedule._id)}
-                            disabled={approveMutation.isLoading}
-                            className="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:opacity-50"
+                            onClick={() => handleEditOpen(schedule)}
+                            className="rounded-2xl bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-600"
                           >
-                            승인
+                            수정
                           </button>
-                          <button
-                            onClick={() => setRejectingId(schedule._id)}
-                            className="rounded-2xl bg-red-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-600"
-                          >
-                            거절
-                          </button>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
 
                     {rejectingId === schedule._id && (
@@ -372,13 +412,67 @@ export default function OwnerSchedulesPage() {
                         <div className="mt-3 flex gap-2">
                           <button
                             onClick={() => handleReject(schedule._id)}
-                            disabled={rejectMutation.isLoading || !rejectionReason.trim()}
+                            disabled={rejectMutation.isPending || !rejectionReason.trim()}
                             className="flex-1 rounded-xl bg-red-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-50"
                           >
                             거절하기
                           </button>
                           <button
                             onClick={() => { setRejectingId(null); setRejectionReason(''); }}
+                            className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                          >
+                            취소
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {editingSchedule?._id === schedule._id && (
+                      <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-4">
+                        <p className="mb-3 text-sm font-semibold text-slate-900">근무 시간 수정</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="mb-1 block text-xs font-semibold text-slate-500">시작 시간</label>
+                            <input
+                              type="time"
+                              value={editForm.startTime}
+                              onChange={(e) => setEditForm((f) => ({ ...f, startTime: e.target.value }))}
+                              className="w-full rounded-xl border border-blue-200 bg-white px-3 py-2 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-xs font-semibold text-slate-500">종료 시간</label>
+                            <input
+                              type="time"
+                              value={editForm.endTime}
+                              onChange={(e) => setEditForm((f) => ({ ...f, endTime: e.target.value }))}
+                              className="w-full rounded-xl border border-blue-200 bg-white px-3 py-2 text-sm"
+                            />
+                          </div>
+                        </div>
+                        <div className="mt-3">
+                          <label className="mb-1 block text-xs font-semibold text-slate-500">메모</label>
+                          <input
+                            type="text"
+                            value={editForm.notes}
+                            onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
+                            placeholder="메모 (선택)"
+                            className="w-full rounded-xl border border-blue-200 bg-white px-3 py-2 text-sm"
+                          />
+                        </div>
+                        {editMutation.isError && (
+                          <p className="mt-2 text-xs text-red-600">{editMutation.error?.response?.data?.message || '수정에 실패했습니다.'}</p>
+                        )}
+                        <div className="mt-3 flex gap-2">
+                          <button
+                            onClick={handleEditSubmit}
+                            disabled={editMutation.isPending || !editForm.startTime || !editForm.endTime}
+                            className="flex-1 rounded-xl bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-600 disabled:opacity-50"
+                          >
+                            {editMutation.isPending ? '저장 중...' : '저장'}
+                          </button>
+                          <button
+                            onClick={() => setEditingSchedule(null)}
                             className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                           >
                             취소

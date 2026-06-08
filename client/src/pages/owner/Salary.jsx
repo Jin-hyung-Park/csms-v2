@@ -10,6 +10,12 @@ const currency = new Intl.NumberFormat('ko-KR', {
   maximumFractionDigits: 0,
 });
 
+const toMD = (dateStr) => {
+  if (!dateStr) return '';
+  const [, m, d] = String(dateStr).split('-');
+  return `${m}/${d}`;
+};
+
 export default function OwnerSalaryPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -291,7 +297,7 @@ export default function OwnerSalaryPage() {
                         {employee.name}
                       </h3>
                       <p className="text-sm text-slate-500">
-                        {employee.storeId?.name || '미할당'}
+                        {employee.storeId?.name || '미할당'} · 시급 {currency.format(employee.hourlyWage || 10030)}
                       </p>
                     </div>
                   </div>
@@ -361,7 +367,7 @@ export default function OwnerSalaryPage() {
                           <tr key={idx} className="border-b border-slate-100 last:border-0">
                             <td className="px-3 py-2.5 font-medium text-slate-900">{week.weekNumber}주차</td>
                             <td className="px-3 py-2.5 text-slate-600">
-                              {week.startDate} ~ {week.endDate}
+                              {toMD(week.startDate)} ~ {toMD(week.endDate)}
                             </td>
                             <td className="px-3 py-2.5 text-right font-semibold text-slate-900">
                               {week.workHours}h

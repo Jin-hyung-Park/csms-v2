@@ -16,6 +16,17 @@ const toMD = (dateStr) => {
   return `${m}/${d}`;
 };
 
+const MINIMUM_WAGE = 10320;
+
+// 해당 주차의 최종 시급: 주 마지막 날 기준으로 수습 여부 판단
+// probationEndDate 당일부터 계약 시급 적용 (서버 로직과 동일: workDate < probationEnd)
+const getWeekWage = (employee, weekEndDate) => {
+  const contractWage = employee.hourlyWage || MINIMUM_WAGE;
+  if (!employee.probationEndDate) return contractWage;
+  const probationEnd = employee.probationEndDate.slice(0, 10); // YYYY-MM-DD
+  return weekEndDate < probationEnd ? MINIMUM_WAGE : contractWage;
+};
+
 export default function OwnerSalaryPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -372,7 +383,7 @@ export default function OwnerSalaryPage() {
                             <td className="px-3 py-2.5 text-right font-semibold text-slate-900">
                               {week.workHours}h
                               <span className="ml-1 text-xs font-normal text-slate-400">
-                                {currency.format(employee.hourlyWage || 10030)}/h
+                                {currency.format(getWeekWage(employee, week.endDate))}/h
                               </span>
                             </td>
                             <td className="px-3 py-2.5 text-right font-semibold text-slate-900">

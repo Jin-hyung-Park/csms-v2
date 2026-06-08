@@ -226,8 +226,8 @@ router.get('/salary/summary', async (req, res) => {
     
     const months = [];
     
-    // 현재 월과 이전 월
-    for (let i = 0; i < 2; i++) {
+    // 현재 월 포함 3개월
+    for (let i = 0; i < 3; i++) {
       const targetDate = new Date(currentYear, currentMonth - 1 - i, 1);
       const targetYear = targetDate.getFullYear();
       const targetMonth = targetDate.getMonth() + 1;

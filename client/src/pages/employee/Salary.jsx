@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../../lib/apiClient';
@@ -8,16 +9,17 @@ const currency = new Intl.NumberFormat('ko-KR', {
   maximumFractionDigits: 0,
 });
 
-const fetchSalarySummary = async () => {
-  const { data } = await apiClient.get('/employee/salary/summary');
-  return data;
-};
-
 export default function EmployeeSalaryPage() {
   const navigate = useNavigate();
+  const [selectedMonthId, setSelectedMonthId] = useState('');
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ['employee-salary-summary'],
-    queryFn: fetchSalarySummary,
+    queryKey: ['employee-salary-summary', selectedMonthId],
+    queryFn: async () => {
+      const params = selectedMonthId ? `?month=${selectedMonthId}` : '';
+      const { data } = await apiClient.get(`/employee/salary/summary${params}`);
+      return data;
+    },
   });
 
   if (isLoading) {
@@ -49,10 +51,7 @@ export default function EmployeeSalaryPage() {
             <select
               className="rounded-2xl border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700"
               value={current.id}
-              onChange={(e) => {
-                const [y, m] = e.target.value.split('-');
-                navigate(`/employee/salary/${y}/${m}`);
-              }}
+              onChange={(e) => setSelectedMonthId(e.target.value)}
             >
               {months.map((m) => (
                 <option key={m.id} value={m.id}>

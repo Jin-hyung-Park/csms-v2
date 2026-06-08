@@ -297,7 +297,7 @@ export default function OwnerSalaryPage() {
                         {employee.name}
                       </h3>
                       <p className="text-sm text-slate-500">
-                        {employee.storeId?.name || '미할당'} · 시급 {currency.format(employee.hourlyWage || 10030)}
+                        {employee.storeId?.name || '미할당'}
                       </p>
                     </div>
                   </div>
@@ -371,6 +371,9 @@ export default function OwnerSalaryPage() {
                             </td>
                             <td className="px-3 py-2.5 text-right font-semibold text-slate-900">
                               {week.workHours}h
+                              <span className="ml-1 text-xs font-normal text-slate-400">
+                                {currency.format(employee.hourlyWage || 10030)}/h
+                              </span>
                             </td>
                             <td className="px-3 py-2.5 text-right font-semibold text-slate-900">
                               {currency.format(week.basePay)}

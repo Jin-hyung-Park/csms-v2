@@ -142,7 +142,8 @@ router.delete('/:id', async (req, res) => {
       return res.status(403).json({ message: '본인의 근무일정만 삭제할 수 있습니다.' });
     }
     
-    if (current.status === 'approved') {
+    // 근로자는 승인된 근무 삭제 불가, 점주는 허용
+    if (current.status === 'approved' && req.user.role !== 'owner') {
       return res.status(409).json({ message: '승인된 근무는 취소할 수 없습니다.' });
     }
     await WorkSchedule.findByIdAndDelete(id);

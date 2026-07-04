@@ -86,6 +86,18 @@ export default function OwnerSchedulesPage() {
     },
   });
 
+  // 삭제
+  const deleteMutation = useMutation({
+    mutationFn: async (scheduleId) => {
+      const { data } = await apiClient.delete(`/work-schedule/${scheduleId}`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['owner-schedules']);
+      queryClient.invalidateQueries(['owner-dashboard']);
+    },
+  });
+
   // 수정
   const editMutation = useMutation({
     mutationFn: async ({ scheduleId, startTime, endTime, notes }) => {
@@ -389,12 +401,25 @@ export default function OwnerSchedulesPage() {
                           </>
                         )}
                         {schedule.status === 'approved' && (
-                          <button
-                            onClick={() => handleEditOpen(schedule)}
-                            className="rounded-2xl bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-600"
-                          >
-                            수정
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleEditOpen(schedule)}
+                              className="rounded-2xl bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-600"
+                            >
+                              수정
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (window.confirm('이 근무일정을 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.')) {
+                                  deleteMutation.mutate(schedule._id);
+                                }
+                              }}
+                              disabled={deleteMutation.isPending}
+                              className="rounded-2xl bg-red-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-50"
+                            >
+                              삭제
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>

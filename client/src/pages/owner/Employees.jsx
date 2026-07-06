@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../../lib/apiClient';
+import { usePersistedFilter } from '../../hooks/usePersistedFilter';
 
 const currency = new Intl.NumberFormat('ko-KR', {
   style: 'currency',
@@ -52,7 +53,7 @@ function AssignStoreModal({ employee, stores, onClose, onAssign }) {
 export default function OwnerEmployeesPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [storeFilter, setStoreFilter] = useState('');
+  const [storeFilter, setStoreFilter] = usePersistedFilter('csms_filter_employees_store', '');
   const [assigningEmployee, setAssigningEmployee] = useState(null);
 
   const { data, isLoading } = useQuery({

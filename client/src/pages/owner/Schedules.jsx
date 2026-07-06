@@ -93,8 +93,9 @@ export default function OwnerSchedulesPage() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['owner-schedules']);
-      queryClient.invalidateQueries(['owner-dashboard']);
+      queryClient.invalidateQueries({ queryKey: ['owner-schedules'] });
+      queryClient.invalidateQueries({ queryKey: ['owner-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['salary-preview'] });
     },
   });
 

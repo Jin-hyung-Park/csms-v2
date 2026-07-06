@@ -130,6 +130,19 @@
 
 ## 변경 이력
 
+### 2026-07-06 — 근무일정 삭제 후 복지포인트 미갱신 버그 수정
+
+**배경:** 점주가 승인된 근무일정을 삭제해도 급여 페이지의 복지포인트 미리보기(`salary-preview` 쿼리)가 갱신되지 않는 문제. 또한 주휴수당 수정(`adjustHolidayPay`) 후 `recalculateTotals()` 호출 시 `totalWelfarePoints`가 재계산되지 않는 잠재적 버그 존재.
+
+**수정 내용:**
+
+| 파일 | 변경 |
+|------|------|
+| `client/src/pages/owner/Schedules.jsx` | deleteMutation `onSuccess`에 `queryClient.invalidateQueries({ queryKey: ['salary-preview'] })` 추가. 기존 invalidate 호출도 TanStack Query v5 객체 문법으로 통일. |
+| `server/src/models/MonthlySalary.js` | `recalculateTotals()` 메서드에 `totalWelfarePoints` 재계산 로직(`weeklyDetails[].welfarePoints` 합산) 추가. |
+
+---
+
 ### 2026-06-08 — 점주 급여 테이블 기간 표시 개선 및 주차별 시급 표시 추가
 
 **배경:** 급여 테이블 기간 컬럼에 연도가 포함되어 가독성이 낮고, 주차별 시급 정보가 표시되지 않아 확인이 불편한 문제.

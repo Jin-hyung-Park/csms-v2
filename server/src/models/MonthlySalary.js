@@ -390,6 +390,10 @@ MonthlySalarySchema.methods.recalculateTotals = function () {
     0
   );
   this.totalGrossPay = this.totalBasePay + this.totalHolidayPay;
+  this.totalWelfarePoints = this.weeklyDetails.reduce(
+    (sum, week) => sum + (week.welfarePoints || 0),
+    0
+  );
 
   // 세금 계산 (간단한 계산, 추후 정확한 로직으로 대체)
   if (this.taxType === 'business-income') {

@@ -912,9 +912,10 @@ router.get('/salary-preview', async (req, res) => {
         const hourlyWage = employee.hourlyWage || 10320;
         const basePay = Math.round(workHours * hourlyWage);
 
-        // 복지포인트: 월요일 기준 월 귀속, 전체 주 시간 적용
+        // 복지포인트: 일요일 기준 월 귀속, 전체 주 시간 적용
+        // 일요일이 다음 달에 속하면(endsInNextMonth) 익월에 산정하므로 이번 달에서 제외
         const fullWeekHours = weekSchedules.reduce((sum, s) => sum + (s.totalHours || 0), 0);
-        const welfarePoints = weekInfo.startsInPrevMonth
+        const welfarePoints = weekInfo.endsInNextMonth
           ? 0
           : Math.floor(fullWeekHours / 4) * WELFARE_POINT_UNIT;
 

@@ -1,7 +1,7 @@
 # CSMS v2 프로젝트 개요
 
 > 편의점 프랜차이즈 종합 근무 관리 시스템 (Convenience Store Management System v2)  
-> 최종 업데이트: 2026-07-13 (2)
+> 최종 업데이트: 2026-07-13 (3)
 
 ---
 
@@ -129,6 +129,18 @@
 ---
 
 ## 변경 이력
+
+### 2026-07-13 (3) — 직원 상세 저장 알림 Mobile Safari 차단 문제 수정
+
+**배경:** Mobile Safari에서 수습 종료일 등 근로 정보 저장 시 첫 번째 이후부터 처리 알림(`alert`)이 표시되지 않는 문제 발생. Safari는 비동기 콜백(API 응답 후 `onSuccess`)에서 호출된 `window.alert()`를 두 번째부터 차단하는 보안 정책을 가짐.
+
+**수정 내용:**
+
+| 파일 | 변경 |
+|------|------|
+| `client/src/pages/owner/EmployeeDetail.jsx` | 일반 저장 시 `window.confirm` 제거 (승인/거절은 유지). `alert('저장되었습니다.')` → 화면 상단 고정 토스트 + 저장 버튼 "✓ 저장됨" 전환(3초 후 복구)으로 교체. `invalidateQueries` TanStack Query v5 객체 문법으로 통일. |
+
+---
 
 ### 2026-07-13 (2) — 근로자 가입 시 수습 종료일 자동 설정
 

@@ -57,6 +57,7 @@ export default function OwnerEmployeeDetailPage() {
   const [hiredAt, setHiredAt] = useState('');
   const [probationEndDate, setProbationEndDate] = useState('');
   const [storeId, setStoreId] = useState('');
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['owner-employee', id],
@@ -114,16 +115,18 @@ export default function OwnerEmployeeDetailPage() {
       return res;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries(['owner-employee', id]);
-      queryClient.invalidateQueries(['owner-employees']);
+      queryClient.invalidateQueries({ queryKey: ['owner-employee', id] });
+      queryClient.invalidateQueries({ queryKey: ['owner-employees'] });
       if (variables.approvalStatus === 'rejected') {
         alert('가입이 거절되었습니다.');
+        navigate('/owner/employees');
       } else if (variables.approvalStatus === 'approved') {
         alert('승인되었습니다.');
+        navigate('/owner/employees');
       } else {
-        alert('저장되었습니다.');
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
       }
-      navigate('/owner/employees');
     },
     onError: (err) => {
       alert(err.response?.data?.message || '저장에 실패했습니다.');
@@ -175,17 +178,21 @@ export default function OwnerEmployeeDetailPage() {
       alert('소속 점포를 선택해 주세요.');
       return;
     }
-    if (window.confirm(isPending ? '이 직원의 가입을 승인하시겠습니까?' : '저장하시겠습니까?')) {
-      approveMutation.mutate({
-        approvalStatus: isPending ? 'approved' : undefined,
-        hourlyWage: wage,
-        taxType: tax,
-        workSchedule,
-        ssn: ssn.trim(),
-        hiredAt: hiredAt.trim() || null,
-        probationEndDate: probationEndDate.trim() || null,
-        storeId,
-      });
+    const doMutate = () => approveMutation.mutate({
+      approvalStatus: isPending ? 'approved' : undefined,
+      hourlyWage: wage,
+      taxType: tax,
+      workSchedule,
+      ssn: ssn.trim(),
+      hiredAt: hiredAt.trim() || null,
+      probationEndDate: probationEndDate.trim() || null,
+      storeId,
+    });
+    // 승인은 confirm 유지, 일반 저장은 바로 실행 (Mobile Safari 비동기 alert 차단 방지)
+    if (isPending) {
+      if (window.confirm('이 직원의 가입을 승인하시겠습니까?')) doMutate();
+    } else {
+      doMutate();
     }
   };
 
@@ -197,6 +204,16 @@ export default function OwnerEmployeeDetailPage() {
 
   return (
     <div className="space-y-6">
+      {/* 저장 성공 토스트 (화면 상단 고정) */}
+      {saveSuccess && (
+        <div className="fixed inset-x-0 top-4 z-50 flex justify-center px-4 pointer-events-none">
+          <div className="flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-lg">
+            <span>✓</span>
+            <span>저장되었습니다.</span>
+          </div>
+        </div>
+      )}
+
       <button
         type="button"
         onClick={() => navigate('/owner/employees')}
@@ -367,10 +384,14 @@ export default function OwnerEmployeeDetailPage() {
               <button
                 type="button"
                 onClick={handleApprove}
-                disabled={approveMutation.isPending}
-                className="touch-target flex-1 rounded-2xl bg-brand-500 px-6 py-3 text-base font-semibold text-white transition hover:bg-brand-600 disabled:opacity-50"
+                disabled={approveMutation.isPending || saveSuccess}
+                className={`touch-target flex-1 rounded-2xl px-6 py-3 text-base font-semibold text-white transition disabled:opacity-50 ${
+                  saveSuccess
+                    ? 'bg-emerald-500'
+                    : 'bg-brand-500 hover:bg-brand-600'
+                }`}
               >
-                {approveMutation.isPending ? '처리 중...' : '저장'}
+                {approveMutation.isPending ? '저장 중...' : saveSuccess ? '✓ 저장됨' : '저장'}
               </button>
               <button
                 type="button"

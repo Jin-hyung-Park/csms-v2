@@ -57,6 +57,11 @@ router.post('/register', async (req, res) => {
       storeId = store._id;
     }
 
+    // 입사일 및 수습 종료일 (근로자만, 가입일 기준 90일)
+    const isEmployee = (role || 'employee') !== 'owner';
+    const hiredAt = isEmployee ? new Date() : null;
+    const probationEndDate = isEmployee ? new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) : null;
+
     // 사용자 생성
     const user = await User.create({
       name,
@@ -65,6 +70,8 @@ router.post('/register', async (req, res) => {
       phone: phone || '',
       role: role || 'employee',
       storeId,
+      hiredAt,
+      probationEndDate,
     });
 
     // 비밀번호 제외한 사용자 정보

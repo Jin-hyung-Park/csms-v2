@@ -232,6 +232,34 @@ export default function OwnerSalaryDetailPage() {
         </section>
       )}
 
+      {/* 시급 적용 정보 */}
+      <div className="rounded-3xl border border-white/60 bg-white/90 p-5 shadow-sm backdrop-blur">
+        <h2 className="mb-3 text-base font-semibold text-slate-900">시급 적용 정보</h2>
+        <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-slate-500">계약 시급</span>
+            <span className="font-semibold text-slate-900">{currency.format(data.hourlyWage ?? 0)}/h</span>
+          </div>
+          {data.probationEndDate ? (
+            <div className="flex items-center gap-2">
+              <span className="text-slate-500">수습 종료일</span>
+              <span className="font-semibold text-amber-700">
+                {new Date(data.probationEndDate).toLocaleDateString('ko-KR')}
+              </span>
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                수습 중 최저시급 {currency.format(data.minWage ?? 10320)}/h
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                수습기간 없음 · 계약 시급 전체 적용
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* 급여 요약: 총근무시간 / 기본급 / 주휴수당 / 실수령액(복지포인트 제외) / 복지포인트 */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <div className="min-w-0 rounded-3xl border border-white/60 bg-white/90 p-5 shadow-sm backdrop-blur">
@@ -298,6 +326,34 @@ export default function OwnerSalaryDetailPage() {
                 )}
               </div>
 
+              {/* 주차 시급 적용 내역 */}
+              {(() => {
+                const probDays = week.dailySchedules?.filter(d => d.isProbation) ?? [];
+                const ctDays = week.dailySchedules?.filter(d => !d.isProbation) ?? [];
+                const hasMixed = probDays.length > 0 && ctDays.length > 0;
+                const allProbation = probDays.length > 0 && ctDays.length === 0;
+                if (!week.dailySchedules?.length) return null;
+                return (
+                  <div className="mb-3 flex flex-wrap gap-2 text-xs">
+                    {(allProbation || hasMixed) && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 font-medium text-amber-700">
+                        수습 {probDays.length}일 · {currency.format(data.minWage ?? 10320)}/h
+                      </span>
+                    )}
+                    {(hasMixed || (!allProbation && ctDays.length > 0)) && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2.5 py-1 font-medium text-sky-700">
+                        계약 {ctDays.length}일 · {currency.format(data.hourlyWage ?? 0)}/h
+                      </span>
+                    )}
+                    {!allProbation && !hasMixed && ctDays.length > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-600">
+                        {currency.format(data.hourlyWage ?? 0)}/h 전체 적용
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
+
               <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-5">
                 <div>
                   <p className="text-slate-500">근무시간</p>
@@ -312,6 +368,25 @@ export default function OwnerSalaryDetailPage() {
                   <p className="font-semibold text-slate-900">
                     {currency.format(week.basePay)}
                   </p>
+                  {(() => {
+                    const schedules = week.dailySchedules ?? [];
+                    if (!schedules.length) return null;
+                    const round1 = (n) => Math.round(n * 10) / 10;
+                    const probH = round1(schedules.filter(d => d.isProbation).reduce((s, d) => s + d.hours, 0));
+                    const ctH = round1(schedules.filter(d => !d.isProbation).reduce((s, d) => s + d.hours, 0));
+                    const minW = (data.minWage ?? 10320).toLocaleString();
+                    const ctW = (data.hourlyWage ?? 0).toLocaleString();
+                    if (probH > 0 && ctH > 0) return (
+                      <p className="mt-0.5 text-xs leading-relaxed text-slate-400">
+                        <span className="text-amber-500">{minW}원×{probH}h</span>
+                        {' + '}
+                        <span className="text-sky-500">{ctW}원×{ctH}h</span>
+                      </p>
+                    );
+                    if (probH > 0) return <p className="mt-0.5 text-xs text-amber-500">{minW}원 × {probH}h</p>;
+                    if (ctH > 0) return <p className="mt-0.5 text-xs text-slate-400">{ctW}원 × {ctH}h</p>;
+                    return null;
+                  })()}
                 </div>
                 <div>
                   <p className="text-slate-500">주휴수당</p>
@@ -344,7 +419,12 @@ export default function OwnerSalaryDetailPage() {
                             {day.dayOfWeek} {day.startTime}~{day.endTime}
                           </p>
                           <p className="text-xs text-slate-500">
-                            {day.date} · {day.storeName} ({day.hours}h)
+                            {day.date} · {day.storeName} · {day.hours}h
+                            {day.wageApplied != null && (
+                              <span className={day.isProbation ? ' text-amber-600 font-medium' : ''}>
+                                {' · '}{currency.format(day.wageApplied)}/h{day.isProbation ? ' (수습)' : ''}
+                              </span>
+                            )}
                           </p>
                         </div>
                         <span

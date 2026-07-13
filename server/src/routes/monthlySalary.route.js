@@ -126,6 +126,12 @@ router.get('/:userId/:year/:month', async (req, res) => {
       .sort({ workDate: 1, startTime: 1 })
       .lean();
 
+    // 시급 적용 정보: 급여 스냅샷의 계약 시급 + 현재 수습 종료일 기준
+    const employeeWageInfo = await User.findById(userIdObj).select('probationEndDate').lean();
+    const probationEndDate = employeeWageInfo?.probationEndDate ? new Date(employeeWageInfo.probationEndDate) : null;
+    const MINIMUM_WAGE = 10320;
+    const contractWage = salary.hourlyWage || MINIMUM_WAGE;
+
     const weeklyDetailsWithDaily = (salary.weeklyDetails || []).map((week) => {
       const wStart = week.startDate ? new Date(week.startDate) : null;
       const wEnd = week.endDate ? new Date(week.endDate) : null;
@@ -136,16 +142,21 @@ router.get('/:userId/:year/:month', async (req, res) => {
               const d = new Date(s.workDate);
               return d >= wStart && d <= wEnd;
             })
-            .map((s) => ({
-              id: s._id.toString(),
-              date: formatLocalDate(s.workDate),
-              dayOfWeek: getDayOfWeek(s.workDate),
-              storeName: s.storeId?.name || '점포 정보 없음',
-              startTime: s.startTime,
-              endTime: s.endTime,
-              hours: s.totalHours || 0,
-              status: s.status || 'pending',
-            }));
+            .map((s) => {
+              const isProbation = !!(probationEndDate && new Date(s.workDate) < probationEndDate);
+              return {
+                id: s._id.toString(),
+                date: formatLocalDate(s.workDate),
+                dayOfWeek: getDayOfWeek(s.workDate),
+                storeName: s.storeId?.name || '점포 정보 없음',
+                startTime: s.startTime,
+                endTime: s.endTime,
+                hours: s.totalHours || 0,
+                status: s.status || 'pending',
+                wageApplied: isProbation ? MINIMUM_WAGE : contractWage,
+                isProbation,
+              };
+            });
       return { ...week, dailySchedules };
     });
 
@@ -153,6 +164,8 @@ router.get('/:userId/:year/:month', async (req, res) => {
       salary: {
         ...salary,
         weeklyDetails: weeklyDetailsWithDaily,
+        probationEndDate: employeeWageInfo?.probationEndDate || null,
+        minWage: MINIMUM_WAGE,
       },
     });
   } catch (error) {

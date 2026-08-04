@@ -42,7 +42,6 @@ export default function EmployeeDashboardPage() {
   const contractInfo = workInfo.contractInfo ?? {};
   const thisWeekWork = data.thisWeekWork ?? {};
   const lastMonthSalary = data.lastMonthSalary ?? {};
-  const taxInfo = lastMonthSalary.taxInfo ?? {};
 
   return (
     <div className="space-y-5 pb-8">
@@ -104,20 +103,12 @@ export default function EmployeeDashboardPage() {
             value={currency.format(lastMonthSalary.grossPay ?? 0)}
             highlight
           />
-          <InfoRow
-            label="세금"
-            value={`-${currency.format(taxInfo.taxAmount ?? 0)}`}
-          />
         </div>
-        <div className="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-center">
-          <p className="text-xs font-medium text-emerald-600">실수령액</p>
-          <p className="text-2xl font-semibold text-emerald-700">
-            {currency.format(taxInfo.netPay ?? lastMonthSalary.grossPay ?? 0)}
+        {lastMonthSalary.isConfirmed && (
+          <p className="mt-3 text-center text-xs font-medium text-emerald-600">
+            ✅ 점주 확정 완료
           </p>
-          {lastMonthSalary.isConfirmed && (
-            <p className="text-xs text-emerald-600">✅ 점주 확정 완료</p>
-          )}
-        </div>
+        )}
       </DashboardCard>
 
       <DashboardCard title="읽지 않은 알림" description="승인 결과를 확인하세요">

@@ -64,8 +64,8 @@ async function notifyScheduleRejected(userId, workDate, storeName, rejectionReas
 /**
  * 급여 확정 알림
  */
-async function notifySalaryConfirmed(userId, year, month, netPay, salaryId) {
-  const amountStr = netPay != null ? ` 실수령액: ${Number(netPay).toLocaleString()}원` : '';
+async function notifySalaryConfirmed(userId, year, month, grossPay, salaryId) {
+  const amountStr = grossPay != null ? ` 총 지급액: ${Number(grossPay).toLocaleString()}원` : '';
   await createNotification({
     userId,
     type: 'salary_confirmed',

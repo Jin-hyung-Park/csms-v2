@@ -3,6 +3,7 @@ const { authenticate, requireEmployee } = require('../middleware/auth');
 const User = require('../models/User');
 const Store = require('../models/Store');
 const WorkSchedule = require('../models/WorkSchedule');
+const MonthlySalary = require('../models/MonthlySalary');
 const {
   formatLocalDate,
   getDayOfWeek,
@@ -68,23 +69,17 @@ router.get('/dashboard', async (req, res) => {
     const lastMonthStart = getStartOfMonth(lastMonthYear, lastMonthMonth);
     const lastMonthEnd = getEndOfMonth(lastMonthYear, lastMonthMonth);
     
-    // 지난 달 근무일정 조회
-    const lastMonthSchedules = await WorkSchedule.find({
+    // 지난 달 산정된 급여 조회 (점주 화면과 동일한 MonthlySalary 기준)
+    const lastMonthSalaryDoc = await MonthlySalary.findOne({
       userId: user._id,
-      workDate: {
-        $gte: lastMonthStart,
-        $lte: lastMonthEnd,
-      },
-      status: 'approved', // 승인된 근무만 급여 계산
-    }).sort({ workDate: 1 });
-    
-    // 지난 달 급여 통계 (간단한 계산, 추후 MonthlySalary 모델과 연동)
-    const lastMonthTotalHours = lastMonthSchedules.reduce((sum, s) => sum + (s.totalHours || 0), 0);
+      year: lastMonthYear,
+      month: lastMonthMonth,
+    })
+      .select('totalWorkHours totalBasePay totalHolidayPay totalGrossPay status')
+      .lean();
+
     const hourlyWage = user.hourlyWage || 10030; // User 모델에서 시급 가져오기
-    const lastMonthBasePay = Math.round(lastMonthTotalHours * hourlyWage);
-    
-    // TODO: 주휴수당 및 세금 계산은 추후 MonthlySalary 모델과 연동
-    
+
     // User 모델에서 근무 스케줄 정보 가져오기
     const workDays = getWorkDaysString(user.workSchedule);
     const workTime = getWorkTimeString(user.workSchedule);
@@ -119,15 +114,11 @@ router.get('/dashboard', async (req, res) => {
         year: lastMonthYear,
         month: lastMonthMonth,
         monthLabel: formatMonthLabel(lastMonthYear, lastMonthMonth),
-        totalHours: Math.round(lastMonthTotalHours * 100) / 100,
-        basePay: lastMonthBasePay,
-        holidayPay: 0, // TODO: 주휴수당 계산
-        grossPay: lastMonthBasePay,
-        taxInfo: {
-          taxAmount: 0, // TODO: 세금 계산
-          netPay: lastMonthBasePay,
-        },
-        isConfirmed: false, // TODO: MonthlySalary 모델에서 확인
+        totalHours: lastMonthSalaryDoc?.totalWorkHours ?? 0,
+        basePay: lastMonthSalaryDoc?.totalBasePay ?? 0,
+        holidayPay: lastMonthSalaryDoc?.totalHolidayPay ?? 0,
+        grossPay: lastMonthSalaryDoc?.totalGrossPay ?? 0,
+        isConfirmed: lastMonthSalaryDoc?.status === 'confirmed',
         link: '/employee/salary',
       },
       unreadNotifications: 0, // TODO: Notification 모델과 연동

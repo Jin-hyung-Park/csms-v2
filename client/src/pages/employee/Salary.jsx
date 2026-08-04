@@ -136,9 +136,9 @@ export default function EmployeeSalaryPage() {
         ) : (
           <>
             <div className="rounded-2xl bg-slate-50 px-4 py-3 text-center">
-              <p className="text-xs text-slate-500">예상 실수령액</p>
+              <p className="text-xs text-slate-500">총 지급액</p>
               <p className="text-3xl font-bold text-slate-900">
-                {currency.format(detailData.taxInfo?.netPay ?? detailData.totalGrossPay)}
+                {currency.format(detailData.totalGrossPay)}
               </p>
               <p className="text-xs text-slate-500">
                 기본급 {currency.format(detailData.totalBasePay)} · 주휴수당{' '}
@@ -149,11 +149,6 @@ export default function EmployeeSalaryPage() {
               <DetailRow label="총 근무시간" value={`${detailData.totalWorkHours}시간`} />
               <DetailRow label="기본급" value={currency.format(detailData.totalBasePay)} />
               <DetailRow label="주휴수당" value={currency.format(detailData.totalHolidayPay)} />
-              <DetailRow
-                label="총 지급액"
-                value={currency.format(detailData.totalGrossPay)}
-                highlight
-              />
             </div>
           </>
         )}

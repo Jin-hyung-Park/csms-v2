@@ -13,7 +13,6 @@ const {
   calculateHolidayPay,
   getMonthlyWeeksForHolidayPay,
 } = require('../utils/holidayPayCalculator');
-const { calculateMonthlyTax } = require('../utils/taxCalculator');
 
 const router = Router();
 
@@ -366,25 +365,7 @@ router.post('/calculate', async (req, res) => {
       0
     );
 
-    // 세금 계산 (taxType별: none/under-15-hours/business-income/labor-income/four-insurance)
-    const taxResult = calculateMonthlyTax(
-      employee.taxType || 'none',
-      totalGrossPay
-    );
-    const taxInfo = {
-      incomeTax: taxResult.incomeTax,
-      localTax: taxResult.localTax,
-      totalTax: taxResult.totalTax,
-      netPay: taxResult.netPay,
-    };
-    if (taxResult.nationalPension !== undefined) {
-      taxInfo.nationalPension = taxResult.nationalPension;
-      taxInfo.healthInsurance = taxResult.healthInsurance;
-      taxInfo.longTermCare = taxResult.longTermCare;
-      taxInfo.employmentInsurance = taxResult.employmentInsurance;
-    }
-
-    // MonthlySalary 생성
+    // MonthlySalary 생성 (세금은 시스템에서 산정하지 않고 별도로 공유함)
     const monthlySalary = await MonthlySalary.create({
       userId: employee._id,
       storeId: employee.storeId._id,
@@ -400,7 +381,6 @@ router.post('/calculate', async (req, res) => {
       totalHolidayPay,
       totalGrossPay,
       totalWelfarePoints,
-      taxInfo,
       weeklyDetails,
       status: 'calculated',
     });
@@ -554,7 +534,7 @@ router.put('/:id/confirm', async (req, res) => {
       salary.userId,
       salary.year,
       salary.month,
-      salary.taxInfo?.netPay,
+      salary.totalGrossPay,
       salary._id
     );
 

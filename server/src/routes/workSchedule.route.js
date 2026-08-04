@@ -116,15 +116,21 @@ router.put('/:id', async (req, res) => {
       });
     }
 
-    const updated = await WorkSchedule.findByIdAndUpdate(
-      id,
-      {
-        startTime: payload.startTime,
-        endTime: payload.endTime,
-        notes: payload.notes ?? current.notes,
-      },
-      { new: true, runValidators: true }
-    );
+    const update = {
+      startTime: payload.startTime,
+      endTime: payload.endTime,
+      notes: payload.notes ?? current.notes,
+    };
+
+    // 거절된 근무일정을 수정하면 재검토를 위해 승인 대기 상태로 전환
+    if (current.status === 'rejected') {
+      update.status = 'pending';
+      update.rejectionReason = '';
+      update.approvedBy = null;
+      update.approvedAt = null;
+    }
+
+    const updated = await WorkSchedule.findByIdAndUpdate(id, update, { new: true, runValidators: true });
     return res.json({ message: '근무 일정이 수정되었습니다.', schedule: updated });
   } catch (e) {
     return res.status(500).json({ message: '근무 수정 실패', error: e.message });

@@ -107,6 +107,7 @@ export default function OwnerSchedulesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries(['owner-schedules']);
+      queryClient.invalidateQueries(['owner-dashboard']);
       setEditingSchedule(null);
     },
   });
@@ -401,7 +402,7 @@ export default function OwnerSchedulesPage() {
                             </button>
                           </>
                         )}
-                        {schedule.status === 'approved' && (
+                        {(schedule.status === 'approved' || schedule.status === 'rejected') && (
                           <>
                             <button
                               onClick={() => handleEditOpen(schedule)}
@@ -456,6 +457,11 @@ export default function OwnerSchedulesPage() {
                     {editingSchedule?._id === schedule._id && (
                       <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-4">
                         <p className="mb-3 text-sm font-semibold text-slate-900">근무 시간 수정</p>
+                        {schedule.status === 'rejected' && (
+                          <p className="mb-3 text-xs font-semibold text-amber-600">
+                            저장하면 &apos;승인 대기&apos; 상태로 전환되어 다시 승인/거절할 수 있습니다.
+                          </p>
+                        )}
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="mb-1 block text-xs font-semibold text-slate-500">시작 시간</label>

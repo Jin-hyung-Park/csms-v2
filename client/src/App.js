@@ -8,7 +8,6 @@ import RegisterPage from './pages/auth/Register';
 import EmployeeDashboardPage from './pages/employee/Dashboard';
 import EmployeeSchedulePage from './pages/employee/Schedule';
 import EmployeeSalaryPage from './pages/employee/Salary';
-import EmployeeSalaryDetailPage from './pages/employee/SalaryDetail';
 import EmployeeProfilePage from './pages/employee/Profile';
 import EmployeeNotificationsPage from './pages/employee/Notifications';
 import OwnerDashboardPage from './pages/owner/Dashboard';
@@ -41,7 +40,6 @@ function App() {
           <Route path="/employee/dashboard" element={<EmployeeDashboardPage />} />
           <Route path="/employee/schedule" element={<EmployeeSchedulePage />} />
           <Route path="/employee/salary" element={<EmployeeSalaryPage />} />
-          <Route path="/employee/salary/:year/:month" element={<EmployeeSalaryDetailPage />} />
           <Route path="/employee/profile" element={<EmployeeProfilePage />} />
           <Route path="/employee/notifications" element={<EmployeeNotificationsPage />} />
         </Route>

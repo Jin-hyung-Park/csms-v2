@@ -282,10 +282,10 @@ router.post('/calculate', async (req, res) => {
       const weekHours = monthSchedules.reduce((sum, s) => sum + (s.totalHours || 0), 0);
       const weekDays = monthSchedules.length;
 
-      // 복지포인트: 일요일 기준 월 귀속, 전체 주 근무시간 기준으로 산정
-      // 일요일이 다음 달에 속하면(endsInNextMonth) 익월에 산정하므로 이번 달에서 제외
+      // 복지포인트: 월요일 기준 월 귀속, 전체 주 근무시간 기준으로 산정 (월 경계 주차도 익월 근무 포함)
+      // 월요일이 전월에 속하면(startsInPrevMonth) 전월에 이미 산정했으므로 이번 달에서 제외
       const fullWeekHours = weekSchedules.reduce((sum, s) => sum + (s.totalHours || 0), 0);
-      const welfarePoints = weekInfo.endsInNextMonth
+      const welfarePoints = weekInfo.startsInPrevMonth
         ? 0
         : Math.floor(fullWeekHours / 4) * WELFARE_POINT_UNIT;
 
